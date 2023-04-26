@@ -505,8 +505,9 @@ def selected_features(df_train, df_test, target, path_intermediary, extended_fea
         )
 
         for sect in selec_sect: 
+            # Add dummies corresponding to selected industry classification level(s) 
             fixed_features += [x for x in df.columns if sect + "__" in str(x)]
-               
+
         # Replace spaces in feature names with underscores
         fixed_features = [f.replace(" ", "_") for f in fixed_features]
 

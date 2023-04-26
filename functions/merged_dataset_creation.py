@@ -157,37 +157,6 @@ def IncomeGroup_preprocess(IncomeGroup):
     return IncomeGroup_Transposed
 
 
-def FuelIntensity_preprocess(FuelIntensity):
-    """
-    This code transposes the input dataframe 'FuelIntensity' by setting the index to the columns
-    ["DS", "ISO", "TR", "IEAName"], and stacking all other columns to create a single 'FuelIntensity'
-    column. It then resets the index, and renames the stacked column to 'FuelIntensity' and the original
-    stacked index to 'FiscalYear'. The resulting dataframe is assigned to 'FuelIntensity_Transposed'.
-
-    Returns:
-    --------
-    FuelIntensity_Transposed : pandas.DataFrame
-        A transposed version of the 'FuelIntensity' dataframe, with the columns "DS", "ISO", "TR",
-        "IEAName", "FiscalYear", and "FuelIntensity".
-    """
-
-    FuelIntensity_Transposed = (
-        FuelIntensity.set_index(["DS", "ISO", "TR", "IEAName"])
-        .stack()
-        .reset_index()
-        .rename(columns={0: "FuelIntensity", "level_4": "FiscalYear"})
-    )
-
-    FuelIntensity_Transposed["FuelIntensity"] = FuelIntensity_Transposed.FuelIntensity.astype(float)
-    FuelIntensity_Transposed["FiscalYear"] = FuelIntensity_Transposed.FiscalYear.astype(int)
-
-    FuelIntensity_Transposed.rename(columns={"TR":"Area", "FiscalYear":"Year"})
-
-    logging.info("FuelIntensity database preprocessed")
-
-    return FuelIntensity_Transposed
-
-
 def merge_datasets(
     Refinitiv_data,
     GICSReclass,

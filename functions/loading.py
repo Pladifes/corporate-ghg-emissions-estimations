@@ -5,6 +5,9 @@ import pandas as pd
 
 
 def country_region_mapping(path, df):
+    """
+    This function adds a "Region" columns to the Refinitiv data.
+    """
     mapping = pd.read_excel(path + "country_region_mapping.xlsx")
     mapping_dict = mapping.set_index("Country").to_dict()["Region"]
     df["Region"] = df["CountryHQ"].apply(lambda x: mapping_dict[x])
