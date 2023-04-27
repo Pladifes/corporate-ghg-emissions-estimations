@@ -117,7 +117,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
     return model
 
 
-def lgbm_model(X_train, y_train, cross_val=True, n_jobs=-1, verbose=0, n_iter=10, seed=None):
+def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None):
     """
     This function returns a LGBM model for regression tasks
     Warning : if cross_val is set True, the function is way longer (several minutes,
@@ -204,7 +204,7 @@ def lgbm_model(X_train, y_train, cross_val=True, n_jobs=-1, verbose=0, n_iter=10
 
 
 def catboost_model(
-    X_train, y_train, cross_val=True, n_jobs=-1, verbose=0, n_iter=10, seed=None
+    X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None
 ):
     """
     This function returns a CatBoost model
@@ -283,4 +283,4 @@ def save_best_model(test_scores, ensemble, path_models, target):
     best_model = ensemble[best_model_index]
     with open(path_models + f"{target}_model.pkl", "wb") as f:
         pickle.dump(best_model, f)
-    return 
+    return best_model

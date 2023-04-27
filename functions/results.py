@@ -15,7 +15,7 @@ from functions.preprocessing import encoding
 from functions.preprocessing import set_columns
 
 
-def summary(X_test, y_pred, y_test, df_test, target, model_name):
+def summary_detailed(X_test, y_pred, y_test, df_test, target, model_name):
     """
     Generates a summary of the model performance by sector and region for a given target variable.
 
@@ -52,7 +52,7 @@ def summary(X_test, y_pred, y_test, df_test, target, model_name):
     X_test_copy["y_test"] = y_test
     X_test_copy.loc[:, "ENEConsume_log"] = df_test_copy.ENEConsume_log.isna()
     X_test_copy.loc[:, "ENEProduce_log"] = df_test_copy.ENEProduce_log.isna()
-    X_test_copy.loc[:, "SectorName"] = df_test_copy.SectorName
+    X_test_copy.loc[:, "SectorName"] = df_test_copy.GICSSector
     X_test_copy.loc[:, "SubSector"] = df_test_copy.GICSName
     X_test_copy.loc[:, "Revenuebuckets"] = df_test_copy.Revenuebuckets
     X_test_copy.loc[:, "Region"] = df_test_copy.Region
@@ -169,7 +169,7 @@ def plot(model, X, y_test, y_pred, plot_path, target, model_name):
 
 
 def scopes_report(
-    dataset, features, target, best_model, estimated_scopes, lst, path_results
+    dataset, target, best_model, estimated_scopes, path_intermediary,  fill_grp, old_pipe, open_data
 ):
     """
     This function generates a report of estimated scopes based on a provided dataset, features, target, and best model.
@@ -186,15 +186,23 @@ def scopes_report(
 
     estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary
     """
+    if open_data :
+        features = pd.read_csv(path_intermediary +'features.csv')
+        features = features['features'].to_list()
+        lst = ['FinalEikonID','Name','FiscalYear','Ticker','ISIN', 'Region','CountryHQ']
+    else :
+        features = pd.read_csv(path_intermediary +'features.csv')
+        features = features['features'].to_list()
+        lst = ['FinalEikonID','Name','FiscalYear','Ticker','ISIN', 'Region','CountryHQ']
 
-    final_dataset = encoding(dataset, target, path_results, train=False)
+    final_dataset = encoding(dataset, target, path_intermediary, train=True, fill_grp=fill_grp, old_pipe=old_pipe, open_data=open_data)
     final_dataset = set_columns(final_dataset, features)
     final_model = best_model.fit(final_dataset[features], final_dataset[target])
     final_y_pred = final_model.predict(final_dataset[features])
     final_dataset_summary = final_dataset[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
     estimated_scopes.append(final_dataset_summary)
-    return estimated_scopes
+    return estimated_scopes,lst
 
 
 def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
@@ -257,7 +265,7 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
 
 
 def results(
-    estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment
+    estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst
 ):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
@@ -273,13 +281,13 @@ def results(
     None: This function doesn't return any values, it only saves files to the specified path.
     """
     merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
+    # merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
+    # merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
     merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
-    summary_metrics.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
+    summary_metrics_detailed.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
     Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
 
 
