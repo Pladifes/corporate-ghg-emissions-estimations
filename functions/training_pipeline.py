@@ -12,7 +12,7 @@ from sklearn.metrics import (
 
 from functions.preprocessing import target_preprocessing, custom_train_split
 from functions.models import save_best_model
-from functions.results import plot, scopes_report, summary_detailed, metrics, results
+from functions.results import best_model_analysis, metrics, results
 
 
 def training_pipeline(
@@ -71,7 +71,7 @@ def training_pipeline(
                     seed=42,
                 )
                 y_pred = model_i.predict(X_test)
-                plot(model_i, X_train, y_test, y_pred, path_plot, target, model_name)
+
                 summary_global, rmse, std = metrics(
                     y_test, y_pred, Summary_Final, target, model_name
                 )
@@ -90,14 +90,9 @@ def training_pipeline(
                     model, "models", registered_model_name=model_name
                 )
                 ensemble.append(model_i)
+                # model_name_lst.append(model_name)
                 test_scores.append(rmse)
                 test_stds.append(std)
-                metrics_scope = summary_detailed(
-                    X_test, y_pred, y_test, df_test, target, model_name
-                )
-                summary_metrics_detailed = pd.concat(
-                    [summary_metrics_detailed, metrics_scope], ignore_index=True
-                )
 
         best_scores.append(test_scores[test_scores.index(min(test_scores))])
         best_stds.append(test_stds[test_scores.index(min(test_scores))])
@@ -105,18 +100,23 @@ def training_pipeline(
         if save:
             best_model = save_best_model(test_scores, ensemble, path_models, target)
 
-        estimated_scopes, lst = scopes_report(
-            dataset,
-            target,
+        summary_metrics_detailed, estimated_scopes, lst = best_model_analysis(
             best_model,
-            estimated_scopes,
+            X_test,
+            X_train,
+            y_test,
+            df_test,
+            target,
+            path_plot,
+            dataset,
             path_intermediary,
-            fill_grp=training_parameters["fill_grp"],
-            old_pipe=training_parameters["old_pipe"],
-            open_data=open_data,
+            summary_metrics_detailed,
+            estimated_scopes,
+            training_parameters,
+            open_data,
         )
     results(
         estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst
     )
 
-    return best_scores, best_stds, summary_global, df_test, summary_metrics_detailed
+    return best_scores, best_stds, summary_global,  summary_metrics_detailed

@@ -15,7 +15,7 @@ from functions.preprocessing import encoding
 from functions.preprocessing import set_columns
 
 
-def summary_detailed(X_test, y_pred, y_test, df_test, target, model_name):
+def summary_detailed(X_test, y_test, y_pred, df_test, target):
     """
     Generates a summary of the model performance by sector and region for a given target variable.
 
@@ -89,7 +89,7 @@ def summary_detailed(X_test, y_pred, y_test, df_test, target, model_name):
                 {
                     "category": category,
                     "scope": target,
-                    "model_name": model_name,
+                    # "model_name": model_name,
                     "category_name": value,
                     "RMSE": rmse,
                     "MSE": mse,
@@ -108,7 +108,7 @@ def summary_detailed(X_test, y_pred, y_test, df_test, target, model_name):
     return summary_region_sector
 
 
-def plot(model, X, y_test, y_pred, plot_path, target, model_name):
+def plot(model, X, y_test, y_pred, plot_path, target):
     """
     This function generates three plots for evaluating the machine learning model's performance :
 
@@ -139,7 +139,7 @@ def plot(model, X, y_test, y_pred, plot_path, target, model_name):
         )
         shap.plots.beeswarm(explanation, show=False, color_bar=False)
         plt.colorbar()
-        plt.savefig(plot_path + f"shap_{target}_{model_name}.png")
+        plt.savefig(plot_path + f"shap_{target}.png")
         plt.show()
 
     def plot_y_test_y_pred(y_test, y_pred):
@@ -150,7 +150,7 @@ def plot(model, X, y_test, y_pred, plot_path, target, model_name):
         plt.xlabel("Actual Values")
         plt.ylabel("Predicted Values")
         plt.title("Actual vs. Predicted Values")
-        plt.savefig(plot_path + f"y_test_y_pred_{target}_{model_name}.png")
+        plt.savefig(plot_path + f"y_test_y_pred_{target}.png")
         plt.show()
 
     def plot_residuals(y_test, y_pred):
@@ -160,7 +160,7 @@ def plot(model, X, y_test, y_pred, plot_path, target, model_name):
         plt.title("Residual Plot")
         plt.xlabel("Predicted Values")
         plt.ylabel("Residuals")
-        plt.savefig(plot_path + f"residus_{target}_{model_name}.png")
+        plt.savefig(plot_path + f"residus_{target}.png")
         plt.show()
 
     plot_shap_values(model, X)
@@ -169,7 +169,14 @@ def plot(model, X, y_test, y_pred, plot_path, target, model_name):
 
 
 def scopes_report(
-    dataset, target, best_model, estimated_scopes, path_intermediary,  fill_grp, old_pipe, open_data
+    dataset,
+    target,
+    best_model,
+    estimated_scopes,
+    path_intermediary,
+    fill_grp,
+    old_pipe,
+    open_data,
 ):
     """
     This function generates a report of estimated scopes based on a provided dataset, features, target, and best model.
@@ -186,23 +193,47 @@ def scopes_report(
 
     estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary
     """
-    if open_data :
-        features = pd.read_csv(path_intermediary +'features.csv')
-        features = features['features'].to_list()
-        lst = ['FinalEikonID','Name','FiscalYear','Ticker','ISIN', 'Region','CountryHQ']
-    else :
-        features = pd.read_csv(path_intermediary +'features.csv')
-        features = features['features'].to_list()
-        lst = ['FinalEikonID','Name','FiscalYear','Ticker','ISIN', 'Region','CountryHQ']
+    if open_data:
+        features = pd.read_csv(path_intermediary + "features.csv")
+        features = features["features"].to_list()
+        lst = [
+            "FinalEikonID",
+            "Name",
+            "FiscalYear",
+            "Ticker",
+            "ISIN",
+            "Region",
+            "CountryHQ",
+        ]
+    else:
+        features = pd.read_csv(path_intermediary + "features.csv")
+        features = features["features"].to_list()
+        lst = [
+            "FinalEikonID",
+            "Name",
+            "FiscalYear",
+            "Ticker",
+            "ISIN",
+            "Region",
+            "CountryHQ",
+        ]
 
-    final_dataset = encoding(dataset, target, path_intermediary, train=True, fill_grp=fill_grp, old_pipe=old_pipe, open_data=open_data)
+    final_dataset = encoding(
+        dataset,
+        target,
+        path_intermediary,
+        train=True,
+        fill_grp=fill_grp,
+        old_pipe=old_pipe,
+        open_data=open_data,
+    )
     final_dataset = set_columns(final_dataset, features)
     final_model = best_model.fit(final_dataset[features], final_dataset[target])
     final_y_pred = final_model.predict(final_dataset[features])
     final_dataset_summary = final_dataset[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
     estimated_scopes.append(final_dataset_summary)
-    return estimated_scopes,lst
+    return estimated_scopes, lst
 
 
 def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
@@ -262,6 +293,40 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
     return summary_global, rmse, std
 
 
+def best_model_analysis(
+    best_model,
+    X_test,
+    X_train,
+    y_test,
+    df_test,
+    target,
+    path_plot,
+    dataset,
+    path_intermediary,
+    summary_metrics_detailed,
+    estimated_scopes,
+    training_parameters,
+    open_data,
+):
+    y_pred_best = best_model.predict(X_test)
+
+    plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
+    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target)
+    summary_metrics_detailed = pd.concat(
+        [summary_metrics_detailed, metrics_scope], ignore_index=True
+    )
+
+    estimated_scopes, lst = scopes_report(
+        dataset,
+        target,
+        best_model,
+        estimated_scopes,
+        path_intermediary,
+        fill_grp=training_parameters["fill_grp"],
+        old_pipe=training_parameters["old_pipe"],
+        open_data=open_data,
+    )
+    return summary_metrics_detailed, estimated_scopes, lst
 
 
 def results(
@@ -287,8 +352,10 @@ def results(
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
-    summary_metrics_detailed.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
-    Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
+    summary_metrics_detailed.to_csv(
+        path_results + "Summary_metrics_detail.csv", index=False
+    )
+    # Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
 
 
 def results_mlflow(
@@ -322,4 +389,3 @@ def results_mlflow(
     Summary_Final.to_csv(
         path_results + f"{name_experiment}_Summary_metrics.csv", index=False
     )
-
