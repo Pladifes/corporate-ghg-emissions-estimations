@@ -45,7 +45,7 @@ def training_pipeline(
         test_scores = []
         test_stds = []
         dataset = target_preprocessing(preprocessed_dataset, target)
-        X_train, y_train, X_test, y_test, df_test = custom_train_split(
+        X_train, y_train, X_test, y_test, df_test,df_train = custom_train_split(
             dataset,
             path_Benchmark,
             path_intermediary,
@@ -58,6 +58,17 @@ def training_pipeline(
             old_pipe=training_parameters["old_pipe"],
             open_data=open_data,
         )
+        # print("test shape", X_test.shape)
+        # print("train shape", X_train.shape)
+
+        # print("test shape country", df_test.CountryHQ.nunique())
+        # print("train shape country", df_train.CountryHQ.nunique())
+
+        # print("test shape sectors", df_test.GICSSubInd.nunique())
+        # print("train shape sectors", df_train.GICSSubInd.nunique())
+
+        # print("test shape", df_test.FinalEikonID.nunique())
+        # print("train shape", df_train.FinalEikonID.nunique())
 
         for i, (model_name, model) in enumerate(models.items()):
             with mlflow.start_run() as run:

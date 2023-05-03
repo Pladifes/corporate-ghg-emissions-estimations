@@ -46,6 +46,7 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target):
     bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(
         ["min", "max", "count", "mean"]
     )
+    # bucket_summary.to_csv("bucket_summary.csv")
 
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred

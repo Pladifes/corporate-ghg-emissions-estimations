@@ -374,9 +374,9 @@ def fillnextyear(data_old, groupvalue, columnlist):
         The output DataFrame with missing values filled, using the 'backfill'
         method within groups defined by the given column(s).
     """
-    data_new = data_old.copy()
+    data_new = data_old.sort_values(by=['FiscalYear'])
     for column in columnlist:
-        data_new[column] = data_new.groupby(groupvalue)[column].fillna(method="bfill")
+        data_new[column] = data_new.groupby(groupvalue)[column].fillna(method="bfill", limit=1)
     return data_new
 
 
@@ -618,4 +618,4 @@ def custom_train_split(
     df_train, df_test = set_columns(df_train, features), set_columns(df_test, features)
     X_train, y_train = df_train[features], df_train[target]
     X_test, y_test = df_test[features], df_test[target]
-    return X_train, y_train, X_test, y_test,df_test
+    return X_train, y_train, X_test, y_test,df_test,df_train

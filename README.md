@@ -51,7 +51,7 @@ Databases produced in the context of this project are available [here](https://p
 You can download a copy of all the files in this repository by cloning the
 [git](https://git-scm.com/) repository:
 
-    git@git-server:mohamed.fahmaoui/scopes_estimations.git
+    https://github.com/Pladifes/corporate-ghg-emissions-estimations.git
 
 ### <a id="dependencies"></a> Dependencies
 
@@ -105,7 +105,7 @@ This repository is divided in 3 folders:
 
 ###  <a id="pipeline"></a> Pipeline
 
-Once the working environment has been successfully installed, the pipeline can be initiated in two ways. The first method involves using the file **__main__.py** in a global manner. Alternatively, for a more detailed approach, you can use Jupyter Notebook where you can perform various experiments and monitor them using <b>mlflow</b>. This allows you to easily track and compare different experiments, which can help you optimize the pipeline's performance according to your datasets and objectifs.
+Once the working environment has been successfully installed, the pipeline can be initiated in two ways. The first method involves using the file **__main__.py** in a global manner by setting the variable `Open_data` to <b>True</b> to run the Open data pipeline and <b>False</b> to run the propriatary pipeline . Alternatively, for a more detailed approach, you can use each pipeline Jupyter Notebook where you can perform various experiments and monitor them using <b>mlflow</b>. This allows you to easily track and compare different experiments, which can help you optimize the pipeline's performance according to your datasets and objectifs.
 
 ## <a id="perfs"></a> Access to base models performances
 
