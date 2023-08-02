@@ -63,9 +63,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
 
     if cross_val:
 
-        def xgb_evaluate(
-            n_estimators, learning_rate, max_depth, gamma, subsample, colsample_bytree
-        ):
+        def xgb_evaluate(n_estimators, learning_rate, max_depth, gamma, subsample, colsample_bytree):
             params = {
                 "n_estimators": int(n_estimators),
                 "learning_rate": learning_rate,
@@ -76,17 +74,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
             }
 
             model = XGBRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(
-                model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs
-            ).mean()
-            # score = -cross_val_score(
-            #     model,
-            #     X_train,
-            #     y_train,
-            #     scoring="neg_root_mean_squared_error",
-            #     cv=3,
-            #     n_jobs=n_jobs,
-            # ).mean()
+            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
             return score
 
         xgb_bo = BayesianOptimization(
@@ -100,6 +88,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
                 "colsample_bytree": (0.5, 1),
             },
             verbose=0,
+            random_state=seed,
         )
         xgb_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
 
@@ -155,18 +144,7 @@ def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=1
             }
 
             model = LGBMRegressor(random_state=seed, **params)
-            score = cross_val_score(
-                model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs
-            ).mean()
-            # score = -cross_val_score(
-            #     model,
-            #     X_train,
-            #     y_train,
-            #     cv=3,
-            #     scoring="neg_root_mean_squared_error",
-            #     n_jobs=n_jobs,
-            # ).mean()
-
+            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
             return score
 
         lgbm_bo = BayesianOptimization(
@@ -185,6 +163,7 @@ def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=1
                 "lambda_l2": (0, 1),
             },
             verbose=0,
+            random_state=seed,
         )
         lgbm_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
 
@@ -203,9 +182,7 @@ def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=1
     return model
 
 
-def catboost_model(
-    X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None
-):
+def catboost_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None):
     """
     This function returns a CatBoost model
     Warning : if cross_val is set True, the function is way longer (several minutes,
@@ -215,7 +192,7 @@ def catboost_model(
 
     if cross_val:
 
-        def catboost_evaluate(depth, learning_rate, l2_leaf_reg, rsm, subsample):
+        def catboost_evaluate(depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations):
             params = {
                 "depth": int(depth),
                 "learning_rate": learning_rate,
@@ -225,9 +202,7 @@ def catboost_model(
                 "iterations": int(iterations),
             }
             model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(
-                model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs
-            ).mean()
+            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
             # score = -cross_val_score(
             #     model,
             #     X_train,
@@ -249,6 +224,7 @@ def catboost_model(
                 "iterations": (10, 2000),
             },
             verbose=0,
+            random_state=seed,
         )
         catboost_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
 
@@ -264,23 +240,3 @@ def catboost_model(
         )
     model.fit(X_train, y_train)
     return model
-
-
-def save_best_model(test_scores, ensemble, path_models, target):
-    """
-    Save the best model from a list of trained models as a pickle file and append it to a list of best models. Returns the best model and the updated list of best models.
-    Parameters:
-    best_models_lst (list): List of the best models that have been found so far.
-    test_scores (list): List of test scores that correspond to each model in the ensemble.
-    ensemble (list): List of trained models that the function will choose the best model from.
-    path_models (str): Path where the pickle file of the best model will be saved.
-    target (str): Target variable used in the model.
-
-    Returns:
-    tuple: A tuple containing the best model and the updated list of best models.
-    """
-    best_model_index = test_scores.index(min(test_scores))
-    best_model = ensemble[best_model_index]
-    with open(path_models + f"{target}_model.pkl", "wb") as f:
-        pickle.dump(best_model, f)
-    return best_model

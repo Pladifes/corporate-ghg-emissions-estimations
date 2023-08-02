@@ -4,6 +4,9 @@ import logging
 import pandas as pd
 
 
+from functions.merged_dataset_creation import create_preprocessed_dataset
+
+
 def country_region_mapping(path, df):
     """
     This function adds a "Region" columns to the Refinitiv data.
@@ -14,35 +17,35 @@ def country_region_mapping(path, df):
     return df
 
 
-def load_data(path):
+def load_data(path, save=False):
     """
     This function loads pre-downloaded datasets in the paths.
     Beware, if one is missing, code will return an error.
     """
-    Refinitiv_data = pd.read_csv(
-        path + "Refinitiv_cleaned_filtered.csv", encoding="latin-1", na_values=["."]
-    )
-    Refinitiv_data = country_region_mapping(path, Refinitiv_data)
+    try:
+        preprocessed_dataset = pd.read_parquet(path + "CGEE_preprocessed_dataset_2023.parquet")
 
-    CarbonPricing = pd.read_excel(
-        path + "Carbon Price Rework 20230405.xlsx",
-    )
-    IncomeGroup = pd.read_csv(
-        path + "updated_income_group.csv",
-        encoding="latin-1",
-    )
-    FuelIntensity = pd.read_csv(path + "2021FuelMix.csv", encoding="latin-1").rename(
-        columns={"Value": "FuelIntensity"}
-    )
-    GICSReclass = pd.read_csv(
-        path + "GICSSector.csv",
-        encoding="latin-1",
-    )
+    except FileNotFoundError:
+        print("File not found, constructing it")
+        Refinitiv_data = pd.read_parquet(path + "refinitiv_cleaned_2023.parquet")
+        Refinitiv_data = country_region_mapping(path, Refinitiv_data)
 
-    return (
-        Refinitiv_data,
-        CarbonPricing,
-        IncomeGroup,
-        FuelIntensity,
-        GICSReclass,
-    )
+        CarbonPricing = pd.read_excel(
+            path + "Carbon Price Rework 20230405.xlsx",
+        )
+        IncomeGroup = pd.read_excel(
+            path + "updated_income_group.xlsx",
+        )
+        FuelIntensity = pd.read_csv(path + "2021FuelMix.csv", encoding="latin-1").rename(
+            columns={"Value": "FuelIntensity"}
+        )
+
+        CDP = pd.read_excel(path + "CDP_filtered_for_CGEE_V1.xlsx")
+
+        preprocessed_dataset = create_preprocessed_dataset(
+            Refinitiv_data, CarbonPricing, IncomeGroup, FuelIntensity, CDP
+        )
+        if save:
+            preprocessed_dataset.to_parquet(path + "CGEE_preprocessed_dataset_2023.parquet")
+
+    return preprocessed_dataset

@@ -126,6 +126,7 @@ dmypy.json
 cython_debug/
 
 data/raw_data/
+data/intermediary_data/
 catboost_info/
 mlruns/
 GHG_estimation_tests_all.ipynb

@@ -4,14 +4,12 @@ import numpy as np
 
 
 from functions.merged_dataset_creation import CarbonPricing_preprocess, IncomeGroup_preprocess, merge_datasets
- 
-from functions.preprocessing import (
-    encoding,
-    set_columns
-)
+
+from functions.preprocessing import encoding, set_columns
+
 
 def apply_model_on_forbes_data(
-    path_rawdata,    
+    path_rawdata,
     path_results,
     path_intermediary,
     path_models,
@@ -21,10 +19,10 @@ def apply_model_on_forbes_data(
     FuelIntensity,
     start_year=2008,
     end_year=2023,
-    save=False
+    save=False,
 ):
     """
-    This function apply pre saved models to forbes data to predict scope 1, 2 and 3 emissions. 
+    This function apply pre saved models to forbes data to predict scope 1, 2 and 3 emissions.
     WARINING : models has to be restricted to Sales (Revenue), Profits (EBIT) and Assets (Asset), and GICSSubInd codes/names.
     """
 
@@ -33,20 +31,24 @@ def apply_model_on_forbes_data(
     mapping_dict = mapping.set_index("Country").to_dict()["Region"]
 
     for year in range(start_year, end_year):
-        df_year = pd.read_excel(path_rawdata+"Forbes-all-with-sector.xlsx", sheet_name=str(year))
+        df_year = pd.read_excel(path_rawdata + "Forbes-all-with-sector.xlsx", sheet_name=str(year))
         df_year = df_year.drop_duplicates()
         df_year.dropna().reset_index(drop=True, inplace=True)
 
         df_year.replace(
-            {'United States': "United States of America",
-                'South Korea': "Korea; Republic (S. Korea)",
-                'Ireland': "Ireland; Republic of",
+            {
+                "United States": "United States of America",
+                "South Korea": "Korea; Republic (S. Korea)",
+                "Ireland": "Ireland; Republic of",
                 "Hong Kong/China": "China",
                 "Australia/United Kingdom": "Australia",
                 "Netherlands/United Kingdom": "Netherlands",
                 "Panama/United Kingdom": "Panama",
-                'Hong Kong-China': 'Hong Kong',
-                'North America': "United States of America"}, inplace=True)
+                "Hong Kong-China": "Hong Kong",
+                "North America": "United States of America",
+            },
+            inplace=True,
+        )
 
         df_year["Region"] = df_year["Country"].apply(lambda x: mapping_dict[x])
 
@@ -55,28 +57,46 @@ def apply_model_on_forbes_data(
         df_year["CF2"] = np.zeros(len(df_year))
         df_year["CF3"] = np.zeros(len(df_year))
         df_year["CF123"] = np.zeros(len(df_year))
-        df_year = df_year.rename(columns={"Company Name": "Name", "Country": "CountryHQ", "Industry": "GICSName", "Sales": "Revenue", "Profits": "EBIT", "Assets": "Asset"})
-        # df_year["FiscalYear"] = df_year.FiscalYear.astype(int) 
+        df_year = df_year.rename(
+            columns={
+                "Company Name": "Name",
+                "Country": "CountryHQ",
+                "Industry": "GICSName",
+                "Sales": "Revenue",
+                "Profits": "EBIT",
+                "Assets": "Asset",
+            }
+        )
+        # df_year["FiscalYear"] = df_year.FiscalYear.astype(int)
 
         CarbonPricing_Transposed = CarbonPricing_preprocess(CarbonPricing)
         IncomeGroup_Transposed = IncomeGroup_preprocess(IncomeGroup)
 
-
         raw_dataset_year = merge_datasets(
-                            df_year,
-                            GICSReclass,
-                            CarbonPricing_Transposed,
-                            IncomeGroup_Transposed,
-                            FuelIntensity,
+            df_year,
+            GICSReclass,
+            CarbonPricing_Transposed,
+            IncomeGroup_Transposed,
+            FuelIntensity,
         )
 
-        raw_dataset_year["FuelIntensity"] = raw_dataset_year.FuelIntensity.fillna(raw_dataset_year.FuelIntensity.median())
+        raw_dataset_year["FuelIntensity"] = raw_dataset_year.FuelIntensity.fillna(
+            raw_dataset_year.FuelIntensity.median()
+        )
 
         raw_dataset_year = raw_dataset_year.rename(columns={"SubInd": "GICSSubInd"})
         raw_dataset_year = raw_dataset_year.drop_duplicates("Name")
 
         for scope in ["CF1", "CF2", "CF3", "CF123"]:
-            dataset = encoding(raw_dataset_year, scope + "_log", path_intermediary, train=False, old_pipe=False, open_data=True, fill_grp="")
+            dataset = encoding(
+                raw_dataset_year,
+                scope + "_log",
+                path_intermediary,
+                train=False,
+                old_pipe=False,
+                open_data=True,
+                fill_grp="",
+            )
             features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
             dataset = set_columns(dataset, features)
             dataset = dataset[features]

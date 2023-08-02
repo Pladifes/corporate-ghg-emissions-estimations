@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import shap
-
+import pickle
 from sklearn.metrics import (
     mean_squared_error,
     r2_score,
@@ -13,6 +13,7 @@ from pandas_profiling import ProfileReport
 
 from functions.preprocessing import encoding
 from functions.preprocessing import set_columns
+from functions.preprocessing import target_preprocessing, outliers_preprocess
 
 
 def summary_detailed(X_test, y_test, y_pred, df_test, target):
@@ -43,9 +44,7 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target):
     deciles = pd.qcut(df_test["Revenue"], 10, labels=False)
     df_test_copy = df_test.copy()
     df_test_copy["Revenuebuckets"] = deciles
-    bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(
-        ["min", "max", "count", "mean"]
-    )
+    bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(["min", "max", "count", "mean"])
     # bucket_summary.to_csv("bucket_summary.csv")
 
     X_test_copy = X_test.copy()
@@ -69,20 +68,10 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target):
         unique = list(X_test_copy[category].unique())
         for value in unique:
             mask = X_test_copy[category] == value
-            rmse = np.sqrt(
-                mean_squared_error(
-                    X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-                )
-            )
-            mse = mean_squared_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
-            mae = mean_absolute_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
-            mape = mean_absolute_percentage_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
+            rmse = np.sqrt(mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]))
+            mse = mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
+            mae = mean_absolute_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
+            mape = mean_absolute_percentage_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             r2 = r2_score(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             std = np.std(X_test_copy[mask]["y_test"] - X_test_copy[mask]["y_pred"])
 
@@ -102,9 +91,7 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target):
                 index=[0],
             )
 
-            summary_region_sector = pd.concat(
-                [summary_region_sector, summary], ignore_index=True
-            )
+            summary_region_sector = pd.concat([summary_region_sector, summary], ignore_index=True)
 
     return summary_region_sector
 
@@ -145,9 +132,7 @@ def plot(model, X, y_test, y_pred, plot_path, target):
 
     def plot_y_test_y_pred(y_test, y_pred):
         plt.scatter(y_test, y_pred)
-        plt.plot(
-            [y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "k--", lw=4
-        )
+        plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "k--", lw=4)
         plt.xlabel("Actual Values")
         plt.ylabel("Predicted Values")
         plt.title("Actual vs. Predicted Values")
@@ -177,7 +162,10 @@ def scopes_report(
     path_intermediary,
     fill_grp,
     old_pipe,
+    threshold_under,
+    threshold_over,
     open_data,
+    path_models,
 ):
     """
     This function generates a report of estimated scopes based on a provided dataset, features, target, and best model.
@@ -221,7 +209,6 @@ def scopes_report(
 
     final_dataset = encoding(
         dataset,
-        target,
         path_intermediary,
         train=True,
         fill_grp=fill_grp,
@@ -229,8 +216,27 @@ def scopes_report(
         open_data=open_data,
     )
     final_dataset = set_columns(final_dataset, features)
-    final_model = best_model.fit(final_dataset[features], final_dataset[target])
+
+    final_dataset_train = target_preprocessing(final_dataset, target)
+    if target in ["CF1_log", "CF3_log", "CF2_log", "CF123_log"]:
+        final_dataset_train = outliers_preprocess(
+            final_dataset_train, target, threshold_under=threshold_under, threshold_over=threshold_over
+        )
+    elif target in ["CF1_log_CF123", "CF3_log_CF123", "CF2_log_CF123"]:
+        target = target[:-6]
+        final_dataset_train = outliers_preprocess(
+            final_dataset_train, target, threshold_under=threshold_under, threshold_over=threshold_over
+        )
+
+    else:
+        print("unexpected target name, error")
+
+    final_model = best_model.fit(final_dataset_train[features], final_dataset_train[target])
     final_y_pred = final_model.predict(final_dataset[features])
+
+    with open(path_models + f"{target}_model.pkl", "wb") as f:
+        pickle.dump(best_model, f)
+
     final_dataset_summary = final_dataset[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
     estimated_scopes.append(final_dataset_summary)
@@ -308,14 +314,10 @@ def best_model_analysis(
     estimated_scopes,
     training_parameters,
     open_data,
+    path_models,
 ):
     y_pred_best = best_model.predict(X_test)
-
     plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
-    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target)
-    summary_metrics_detailed = pd.concat(
-        [summary_metrics_detailed, metrics_scope], ignore_index=True
-    )
 
     estimated_scopes, lst = scopes_report(
         dataset,
@@ -325,14 +327,15 @@ def best_model_analysis(
         path_intermediary,
         fill_grp=training_parameters["fill_grp"],
         old_pipe=training_parameters["old_pipe"],
+        threshold_under=training_parameters["threshold_under"],
+        threshold_over=training_parameters["threshold_over"],
         open_data=open_data,
+        path_models=path_models,
     )
     return summary_metrics_detailed, estimated_scopes, lst
 
 
-def results(
-    estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst
-):
+def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -353,15 +356,11 @@ def results(
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
-    summary_metrics_detailed.to_csv(
-        path_results + "Summary_metrics_detail.csv", index=False
-    )
+    summary_metrics_detailed.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
     # Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
 
 
-def results_mlflow(
-    estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment
-):
+def results_mlflow(estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -381,12 +380,6 @@ def results_mlflow(
     merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
-    merged_df.to_csv(
-        path_results + f"{name_experiment}_Estimated_scopes.csv", index=False
-    )
-    summary_metrics.to_csv(
-        path_results + f"{name_experiment}_Summary_metrics_detail.csv", index=False
-    )
-    Summary_Final.to_csv(
-        path_results + f"{name_experiment}_Summary_metrics.csv", index=False
-    )
+    merged_df.to_csv(path_results + f"{name_experiment}_Estimated_scopes.csv", index=False)
+    summary_metrics.to_csv(path_results + f"{name_experiment}_Summary_metrics_detail.csv", index=False)
+    Summary_Final.to_csv(path_results + f"{name_experiment}_Summary_metrics.csv", index=False)
