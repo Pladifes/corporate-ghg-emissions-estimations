@@ -1,5 +1,5 @@
 import mlflow
-
+import numpy as NPPE
 
 from sklearn.metrics import (
     mean_squared_error,
@@ -9,6 +9,25 @@ from sklearn.metrics import (
 )
 from functions.preprocessing import custom_train_split
 from functions.results import best_model_analysis, metrics, results
+
+
+def weights_creation(df, target, companies=True):
+    df["weight_reliability"] = np.ones(len(df))
+    CDP_indexes = df[df[target] == df["CDP_"+target]].index
+    df.loc[CDP_indexes, "weight_reliability"] = [2 for i in range(len(CDP_indexes))]
+
+    nb_occurences = df["country_sector"].value_counts() 
+    df["weight_country_sector"] = df.apply(lambda row : 1 / nb_occurences[row["country_sector"]])
+
+    if companies:
+        nb_occurences = df.FinalEikonID.value_counts()
+        df["weight_companies"] = df.apply(lambda row : 1 / nb_occurences[row["FinalEikonID"]])
+
+        df["weight_final"] = df["weight_reliability"] * df["weight_companies"] * df["weight_country_sector"]
+    else:
+        df["weight_final"] = df["weight_reliability"] *  df["weight_country_sector"]
+
+    return df["weight_final"].tolist()
 
 
 def training_pipeline(
@@ -28,6 +47,8 @@ def training_pipeline(
     training_parameters,
     open_data=False,
     save=False,
+    weights=None,
+    companies=True,
 ):
     """
     Apply a training pipeline for the imputes targets, models and parameters.
@@ -61,6 +82,10 @@ def training_pipeline(
             open_data=open_data,
         )
         print("preprocessing done")
+        if weights:
+            df_train_merged = X_train.join(preprocessed_dataset[["CDP_CF1", "CDP_CF2", "CDP_CF3", "CDP_CF123","country_sector"]]) # (11056, 281)        
+            weights = weights_creation(df_train_merged, target, companies)
+
         seed = training_parameters["seed"]
         n_iter = training_parameters["n_iter"]
         for i, (model_name, model) in enumerate(models.items()):

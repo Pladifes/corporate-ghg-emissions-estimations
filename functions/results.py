@@ -276,8 +276,8 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
     for k in range(n_split):
         rmses.append(
             mean_squared_error(
-                y_test[int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
-                y_pred[int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
+                y_test[int(k * l_test / n_split): int((k + 1) * l_test / n_split)],
+                y_pred[int(k * l_test / n_split): int((k + 1) * l_test / n_split)],
                 squared=False,
             )
         )

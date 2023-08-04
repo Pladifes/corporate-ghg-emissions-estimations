@@ -528,10 +528,14 @@ def outliers_preprocess(
             if any(condition):
                 index_to_drop.extend(subset.loc[condition].index.tolist())
 
-    # df = df[~(df.index.isin(index_to_drop))]
-    df.loc[index_to_drop, scope] = [np.nan for i in range(len(index_to_drop))]
+    df = df[~(df.index.isin(index_to_drop))]
+    # companies_to_drop = df.loc[index_to_drop, "FinalEikonID"].unique()
+    # df = df[~(df.FinalEikonID.isin(companies_to_drop))]
+    # df.loc[index_to_drop, scope] = [np.nan for i in range(len(index_to_drop))]
 
     return df
+
+
 
 
 def custom_train_split(
@@ -646,6 +650,7 @@ def custom_train_split(
         X_test, y_test = df_test[features], df_test[target]
     else:
         print("unexpected target name, error")
+
 
     return (
         X_train,

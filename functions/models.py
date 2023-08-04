@@ -59,7 +59,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
     often less than an hour)
     """
 
-    model = XGBRegressor(random_state=seed)
+    model = XGBRegressor(random_state=seed, verbosity =0)
 
     if cross_val:
 
@@ -106,7 +106,7 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
     return model
 
 
-def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None):
+def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=-1, n_iter=10, seed=None):
     """
     This function returns a LGBM model for regression tasks
     Warning : if cross_val is set True, the function is way longer (several minutes,
@@ -152,7 +152,7 @@ def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=1
             {
                 "n_estimators": (50, 500),
                 "learning_rate": (0.01, 0.5),
-                "num_leaves": (31, 200),
+                "num_leaves": (31, 100),
                 "subsample": (0.5, 1),
                 "colsample_bytree": (0.5, 1),
                 "max_depth": (1, 20),
