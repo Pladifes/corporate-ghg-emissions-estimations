@@ -15,7 +15,7 @@ from sklearn.metrics import (
 )
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
-from catboost import CatBoostRegressor
+from catboost import CatBoostRegressor, Pool
 from bayes_opt import BayesianOptimization
 
 from functions.preprocessing import encoding
@@ -52,14 +52,14 @@ def features_selectkbest(df, target):
     return all_features
 
 
-def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_iter=10, seed=None):
+def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_iter=10, seed=None, custom_gradient=False):
     """
     This function returns a XGBoost model for regression tasks
     Warning : if cross_val is set True, the function is way longer (several minutes,
     often less than an hour)
     """
 
-    model = XGBRegressor(random_state=seed, verbosity =0)
+    model = XGBRegressor(random_state=seed, verbosity=0)
 
     if cross_val:
 
@@ -106,13 +106,21 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
     return model
 
 
-def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=-1, n_iter=10, seed=None):
+def lgbm_model(
+    X_train, y_train, cross_val=False, n_jobs=-1, verbose=-1, n_iter=10, seed=None, weights=None, custom_gradient=False
+):
     """
     This function returns a LGBM model for regression tasks
     Warning : if cross_val is set True, the function is way longer (several minutes,
     often less than an hour)
     """
-    model = LGBMRegressor(verbose=verbose, random_state=seed)
+    verbose -= 1
+    if custom_gradient == "L1":
+        model = LGBMRegressor(verbose=verbose, random_state=seed, objective=RmseObjectiveL1().calc_ders_range)
+    elif custom_gradient == "L2":
+        model = LGBMRegressor(verbose=verbose, random_state=seed, objective=RmseObjectiveL2().calc_ders_range)
+    else:
+        model = LGBMRegressor(verbose=verbose, random_state=seed)
 
     if cross_val:
 
@@ -178,17 +186,49 @@ def lgbm_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=-1, n_iter=
             max_depth=int(lgbm_bo.max["params"]["max_depth"]),
         )
 
-    model.fit(X_train, y_train)
+    if custom_gradient:
+        model.fit(
+            X_train,
+            y_train,
+            eval_metric=rmse_metric_lgbm,
+            sample_weight=weights,
+            eval_sample_weight=weights,
+        )
+    else:
+        if weights is not None:
+            model.fit(
+                X_train,
+                y_train,
+                sample_weight=weights,
+                eval_sample_weight=weights,
+            )
+        else:
+            model.fit(
+                X_train,
+                y_train,
+            )
+
     return model
 
 
-def catboost_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None):
+def catboost_model(
+    X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None, weights=None, custom_gradient=False
+):
     """
     This function returns a CatBoost model
     Warning : if cross_val is set True, the function is way longer (several minutes,
     often less than an hour)
     """
-    model = CatBoostRegressor(verbose=verbose, random_state=seed)
+    if custom_gradient == "L1":
+        model = CatBoostRegressor(
+            verbose=verbose, random_state=seed, loss_function=RmseObjectiveL1(), eval_metric=RmseMetric()
+        )
+    elif custom_gradient == "L2":
+        model = CatBoostRegressor(
+            verbose=verbose, random_state=seed, loss_function=RmseObjectiveL2(), eval_metric=RmseMetric()
+        )
+    else:
+        model = CatBoostRegressor(verbose=verbose, random_state=seed)
 
     if cross_val:
 
@@ -238,5 +278,121 @@ def catboost_model(X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_it
             subsample=catboost_bo.max["params"]["subsample"],
             # iterations=catboost_bo.max["params"]["iterations"]
         )
-    model.fit(X_train, y_train)
+    if custom_gradient:
+        cat_train_data = Pool(data=X_train, label=y_train, weight=weights)
+        model.fit(cat_train_data)
+    else:
+        if weights is not None:
+            cat_train_data = Pool(data=X_train, label=y_train, weight=weights)
+        else:
+            cat_train_data = Pool(data=X_train, label=y_train)
+        model.fit(cat_train_data)
     return model
+
+
+class RmseObjectiveL1(object):
+    def calc_ders_range(self, approxes, targets, weights):
+        assert len(approxes) == len(targets)
+        if weights is not None:
+            assert len(weights) == len(approxes)
+        der1, der2 = [], []
+
+        for index in range(len(targets)):
+            der1.append(targets[index] - approxes[index])
+            der2.append(-1)
+
+        companies_ids = pd.read_csv("data/intermediary_data/companies_ids.csv")
+        for corpo_id in companies_ids:
+            lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
+            corpo_der_sum = sum([der1[i] for i in range(lst_idx)])  # use L1 norm, simplest to implement ?
+            # corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
+            # der1[i] = der1[i] / corpo_der_sum
+            weights.loc[lst_idx, "weight_final"] = weights.loc[lst_idx, "weight_final"] / corpo_der_sum  # normalisation
+
+        for index in range(len(targets)):
+            if weights is not None:
+                der1[index] *= weights["weight_final"]
+                der2[index] *= weights["weight_final"]
+
+        result = np.array([der1, der2]).reshape(-1, 2)
+        return result
+
+
+class RmseObjectiveL2(object):
+    def calc_ders_range(self, approxes, targets, weights):
+        assert len(approxes) == len(targets)
+        if weights is not None:
+            assert len(weights) == len(approxes)
+
+        der1, der2 = [], []
+
+        for index in range(len(targets)):
+            der1.append(targets[index] - approxes[index])
+            der2.append(-1)
+
+        companies_ids = pd.read_csv("data/intermediary_data/companies_ids.csv")
+        for corpo_id in companies_ids:
+            lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
+            corpo_der_sum = sum([der1[i] for i in range(lst_idx)])  # use L1 norm, simplest to implement ?
+            # corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
+            # der1[i] = der1[i] / corpo_der_sum
+            weights.loc[lst_idx, "weight_final"] = weights.loc[lst_idx, "weight_final"] / corpo_der_sum  # normalisation
+
+        for index in range(len(targets)):
+            if weights is not None:
+                der1[index] *= weights["weight_final"]
+                der2[index] *= weights["weight_final"]
+
+        result = np.array([der1, der2]).reshape(-1, 2)
+        return result
+
+
+class RmseMetric(object):
+    def get_final_error(self, error, weight):
+        return np.sqrt(error / (weight + 1e-38))
+
+    def is_max_optimal(self):
+        return False
+
+    def evaluate(self, approxes, target, weight):
+        assert len(approxes) == 1
+        assert len(target) == len(approxes[0])
+
+        if weight:
+            weight = weight
+        approx = approxes[0]
+
+        error_sum = 0.0
+        weight_sum = 0.0
+
+        for i in range(len(approx)):
+            w = 1.0 if weight is None else weight[i]
+            weight_sum += w
+            error_sum += w * ((approx[i] - target[i]) ** 2)
+
+        return error_sum, weight_sum
+
+
+def rmse_metric_lgbm(approxes, target, weight):
+    is_higher_better = False
+
+    def get_final_error(self, error, weight):
+        return np.sqrt(error / (weight + 1e-38))
+
+    def evaluate(self, approxes, target, weight):
+        assert len(approxes) == 1
+        assert len(target) == len(approxes[0])
+        if weight:
+            weight = weight.weight_final.tolist()
+        approx = approxes[0]
+
+        error_sum = 0.0
+        weight_sum = 0.0
+
+        for i in range(len(approx)):
+            w = 1.0 if weight is None else weight[i]
+            weight_sum += w
+            error_sum += w * ((approx[i] - target[i]) ** 2)
+        return error_sum, weight_sum
+
+    return "custom_rmse_metric_lgbm", get_final_error(evaluate(approxes, target, weight)), is_higher_better

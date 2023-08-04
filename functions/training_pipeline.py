@@ -1,5 +1,5 @@
 import mlflow
-import numpy as NPPE
+import numpy as np
 
 from sklearn.metrics import (
     mean_squared_error,
@@ -12,22 +12,23 @@ from functions.results import best_model_analysis, metrics, results
 
 
 def weights_creation(df, target, companies=True):
+    target = target[:-4]
     df["weight_reliability"] = np.ones(len(df))
-    CDP_indexes = df[df[target] == df["CDP_"+target]].index
+    CDP_indexes = df[df[target] == df["CDP_" + target]].index
     df.loc[CDP_indexes, "weight_reliability"] = [2 for i in range(len(CDP_indexes))]
 
-    nb_occurences = df["country_sector"].value_counts() 
-    df["weight_country_sector"] = df.apply(lambda row : 1 / nb_occurences[row["country_sector"]])
+    nb_occurences = df["country_sector"].value_counts()
+    df["weight_country_sector"] = df.apply(lambda row: 1 / nb_occurences[row["country_sector"]])
 
     if companies:
         nb_occurences = df.FinalEikonID.value_counts()
-        df["weight_companies"] = df.apply(lambda row : 1 / nb_occurences[row["FinalEikonID"]])
+        df["weight_companies"] = df.apply(lambda row: 1 / nb_occurences[row["FinalEikonID"]])
 
         df["weight_final"] = df["weight_reliability"] * df["weight_companies"] * df["weight_country_sector"]
     else:
-        df["weight_final"] = df["weight_reliability"] *  df["weight_country_sector"]
+        df["weight_final"] = df["weight_reliability"] * df["weight_country_sector"]
 
-    return df["weight_final"].tolist()
+    return df[["weight_final", "FinalEikonID"]]
 
 
 def training_pipeline(
@@ -49,6 +50,7 @@ def training_pipeline(
     save=False,
     weights=None,
     companies=True,
+    custom_gradient=False,
 ):
     """
     Apply a training pipeline for the imputes targets, models and parameters.
@@ -83,7 +85,9 @@ def training_pipeline(
         )
         print("preprocessing done")
         if weights:
-            df_train_merged = X_train.join(preprocessed_dataset[["CDP_CF1", "CDP_CF2", "CDP_CF3", "CDP_CF123","country_sector"]]) # (11056, 281)        
+            df_train_merged = X_train.join(
+                preprocessed_dataset[["CDP_CF1", "CDP_CF2", "CDP_CF3", "CDP_CF123", "country_sector"]]
+            )  # (11056, 281)
             weights = weights_creation(df_train_merged, target, companies)
 
         seed = training_parameters["seed"]
@@ -98,6 +102,8 @@ def training_pipeline(
                     verbose=0,
                     n_iter=n_iter,
                     seed=seed,
+                    weights=weights,
+                    custom_gradient=custom_gradient,
                 )
                 y_pred = model_i.predict(X_test)
 

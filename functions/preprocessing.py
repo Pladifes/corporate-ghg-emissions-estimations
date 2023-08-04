@@ -457,7 +457,7 @@ def encoding(df, path_intermediary, train, fill_grp, old_pipe, open_data):
     df = logtransform(df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
-    df = df.reset_index(drop=True)
+    # df = df.reset_index(drop=True)
 
     return df
 
@@ -536,8 +536,6 @@ def outliers_preprocess(
     return df
 
 
-
-
 def custom_train_split(
     dataset,
     path_Benchmark,
@@ -598,7 +596,8 @@ def custom_train_split(
     """
     try:
         df_train = pd.read_parquet(path_intermediary + "df_train.parquet")
-        df_test = pd.read_csv(path_intermediary + "df_test.csv")
+        df_test = pd.read_parquet(path_intermediary + "df_test.parquet")
+
         features = pd.read_csv(path_intermediary + "features.csv")["features"].tolist()
         print("Using pre created preprocessed files")
 
@@ -635,8 +634,11 @@ def custom_train_split(
         )
         df_train, df_test = set_columns(df_train, features), set_columns(df_test, features)
 
-        df_train.to_parquet(path_intermediary + "df_train.parquet", index=False)
-        df_test.to_csv(path_intermediary + "df_test.csv", index=False)
+        df_train.index.name = "saved_index"
+        df_test.index.name = "saved_index"
+
+        df_train.to_parquet(path_intermediary + "df_train.parquet")
+        df_test.to_parquet(path_intermediary + "df_test.parquet")
 
     df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(df_test, target)
     if target in ["CF1_log", "CF3_log", "CF2_log", "CF123_log"]:
@@ -650,7 +652,6 @@ def custom_train_split(
         X_test, y_test = df_test[features], df_test[target]
     else:
         print("unexpected target name, error")
-
 
     return (
         X_train,
