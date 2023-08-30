@@ -17,7 +17,7 @@ def apply_model_on_forbes_data(
 ):
     """
     This function apply pre saved models to forbes data to predict scope 1, 2 and 3 emissions.
-    WARINING : models has to be restricted to Sales (Revenue), Profits (EBIT) and Assets (Asset), and GICSSubInd codes/names.
+    WARINING : models has to be restricted to Sales (Revenue), Profits (EBIT) and Assets (Asset), and GICSSubInd Names.
     """
     mapping = pd.read_excel(path_rawdata + "country_region_mapping.xlsx")
     mapping_dict = mapping.set_index("Country").to_dict()["Region"]

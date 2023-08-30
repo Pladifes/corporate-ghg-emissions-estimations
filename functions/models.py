@@ -269,7 +269,7 @@ def catboost_model(
                 "iterations": int(iterations),
             }
             model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
+            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs).mean()
             # score = -cross_val_score(
             #     model,
             #     X_train,

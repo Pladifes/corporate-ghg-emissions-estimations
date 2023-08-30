@@ -16,7 +16,7 @@ from functions.preprocessing import set_columns
 from functions.preprocessing import target_preprocessing, outliers_preprocess
 
 
-def summary_detailed(X_test, y_test, y_pred, df_test, target):
+def summary_detailed(X_test, y_test, y_pred, df_test, target, open_data):
     """
     Generates a summary of the model performance by sector and region for a given target variable.
 
@@ -44,27 +44,25 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target):
     deciles = pd.qcut(df_test["Revenue"], 10, labels=False)
     df_test_copy = df_test.copy()
     df_test_copy["Revenuebuckets"] = deciles
-    bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(["min", "max", "count", "mean"])
+    # bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(["min", "max", "count", "mean"])
     # bucket_summary.to_csv("bucket_summary.csv")
 
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred
     X_test_copy["y_test"] = y_test
-    X_test_copy.loc[:, "ENEConsume_log"] = df_test_copy.ENEConsume_log.isna()
-    X_test_copy.loc[:, "ENEProduce_log"] = df_test_copy.ENEProduce_log.isna()
-    X_test_copy.loc[:, "SectorName"] = df_test_copy.GICSSector
     X_test_copy.loc[:, "SubSector"] = df_test_copy.GICSName
     X_test_copy.loc[:, "Revenuebuckets"] = df_test_copy.Revenuebuckets
     X_test_copy.loc[:, "Region"] = df_test_copy.Region
 
-    for category in [
-        "SectorName",
-        "Region",
-        "Revenuebuckets",
-        "SubSector",
-        "ENEConsume_log",
-        "ENEProduce_log",
-    ]:
+    if not open_data:
+        X_test_copy.loc[:, "ENEConsume_log"] = df_test_copy.ENEConsume_log.isna()
+        X_test_copy.loc[:, "ENEProduce_log"] = df_test_copy.ENEProduce_log.isna()
+        X_test_copy.loc[:, "SectorName"] = df_test_copy.GICSSector
+        categories = ["Region", "Revenuebuckets", "SubSector", "SectorName", "ENEConsume_log", "ENEProduce_log"]
+    else:
+        categories = ["Region", "Revenuebuckets", "SubSector"]
+
+    for category in categories:
         unique = list(X_test_copy[category].unique())
         for value in unique:
             mask = X_test_copy[category] == value
@@ -178,30 +176,12 @@ def scopes_report(
 
     estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary
     """
-    if open_data:
-        features = pd.read_csv(path_intermediary + "features.csv")
-        features = features["features"].to_list()
-        lst = [
-            "FinalEikonID",
-            "Name",
-            "FiscalYear",
-            "Ticker",
-            "ISIN",
-            "Region",
-            "CountryHQ",
-        ]
-    else:
-        features = pd.read_csv(path_intermediary + "features.csv")
-        features = features["features"].to_list()
-        lst = [
-            "FinalEikonID",
-            "Name",
-            "FiscalYear",
-            "Ticker",
-            "ISIN",
-            "Region",
-            "CountryHQ",
-        ]
+    features = pd.read_csv(path_intermediary + "features.csv")
+    features = features["features"].to_list()
+    lst = [
+        "FinalEikonID",
+        "FiscalYear",
+    ]
 
     final_dataset = encoding(
         dataset,
@@ -293,12 +273,13 @@ def best_model_analysis(
     path_intermediary,
     summary_metrics_detailed,
     estimated_scopes,
-    training_parameters,
     open_data,
     path_models,
 ):
     y_pred_best = best_model.predict(X_test)
     plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
+    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target, open_data)
+    summary_metrics_detailed = pd.concat([summary_metrics_detailed, metrics_scope], ignore_index=True)
 
     estimated_scopes, lst = scopes_report(
         dataset,
@@ -327,14 +308,19 @@ def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Fi
     None: This function doesn't return any values, it only saves files to the specified path.
     """
     merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
-    # merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
-    # merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
-    # merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
+    merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
+    merged_df = pd.merge(merged_df, estimated_scopes[3], on=lst, how="outer")
+    merged_df = merged_df.sort_values(by=["FinalEikonID", "FiscalYear"])
+    merged_df = merged_df.reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
     summary_metrics_detailed.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
-    # Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
+    dict_recap = {}
+    for key in ["Target", "model", "mae", "mse", "r2", "rmse", "mape", "std"]:
+        dict_recap[key] = [Summary_Final[i][key] for i in range(len(Summary_Final))]
+    df_Summary_Final = pd.DataFrame.from_dict(dict_recap)
+    df_Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
 
 
 def results_mlflow(estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment):
@@ -354,7 +340,7 @@ def results_mlflow(estimated_scopes, path_results, summary_metrics, Summary_Fina
     merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
     merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
     merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
-    merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
+    merged_df.sort_values(by=["FinalEikonID", "FiscalYear"]).reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + f"{name_experiment}_Estimated_scopes.csv", index=False)

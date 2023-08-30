@@ -6,6 +6,9 @@ import pandas as pd
 
 
 def prepro_isin_ticker(isin):
+    """
+    Cleans the CDP ISINs and Tickers before merge
+    """
     if type(isin) == str:
         lst_isin = isin.split(",")
         for i, isinn in enumerate(lst_isin):

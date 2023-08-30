@@ -16,6 +16,21 @@ def companies_occurences(df):
     return df.apply(lambda row: 1 / nb_occurences[row["FinalEikonID"]], axis=1).values
 
 
+def special(df, target):
+    if target == "CF2":
+        index_to_scale = df[(df[target + "_log"] < 4)].index
+        df.loc[index_to_scale, "weight_final"] = df["weight_final"] * 20
+    elif target == "CF3":
+        index_to_scale = df[(df[target + "_log"] < 3) | (df[target + "_log"] > 6)].index
+        df.loc[index_to_scale, "weight_final"] = df["weight_final"] * 20
+    elif target == "CF123":
+        index_to_scale = df[(df[target + "_log"] > 5) & (df[target + "_log"])].index
+        df.loc[index_to_scale, "weight_final"] = df["weight_final"] * 10
+        index_to_scale = df[(df[target + "_log"] > 7) & (df[target + "_log"])].index
+        df.loc[index_to_scale, "weight_final"] = df["weight_final"] * 100
+    return df
+
+
 def weights_creation(df, target, companies=True):
     target = target[:-4]
     df["weight_reliability"] = np.ones(len(df))
@@ -29,8 +44,9 @@ def weights_creation(df, target, companies=True):
         df["weight_companies"] = companies_occurences(df)
         df["weight_final"] = df["weight_reliability"] * df["weight_companies"] * df["weight_country_sector"]
     else:
-        df["weight_final"] = df["weight_reliability"] * df["weight_country_sector"]
+        df["weight_final"] = df["weight_reliability"]  # * df["weight_country_sector"]
 
+    df = special(df, target)
     return np.array(df["weight_final"].tolist())
 
 
@@ -72,6 +88,8 @@ def training_pipeline(
         print(target)
         test_scores = []
         test_stds = []
+        # test_scores_train = []
+        # test_stds_train = []
         (
             X_train,
             y_train,
@@ -105,6 +123,7 @@ def training_pipeline(
                     ]
                 ]
             )
+            df_train_merged[target] = y_train
             if custom_gradient:
                 weights = companies_occurences(df_train_merged)
             else:
@@ -128,11 +147,15 @@ def training_pipeline(
                     custom_gradient=custom_gradient,
                 )
                 y_pred = model_i.predict(X_test)
+                # y_pred_train = model_i.predict(X_train)
 
                 # store_pred.append(y_pred)
                 # store_test.append(y_test)
 
                 summary_global, rmse, std = metrics(y_test, y_pred, Summary_Final, target, model_name)
+                # summary_global_train, rmse_train, std_train = metrics(
+                #     y_train, y_pred_train, Summary_Final, target, model_name
+                # )
                 mlflow.log_metric("mae", mean_absolute_error(y_test, y_pred))
                 mlflow.log_metric("rmse", mean_squared_error(y_test, y_pred, squared=False))
                 mlflow.log_metric("mse", mean_squared_error(y_test, y_pred))
@@ -146,8 +169,14 @@ def training_pipeline(
                 test_scores.append(rmse)
                 test_stds.append(std)
 
+                # test_scores_train.append(rmse_train)
+                # test_stds_train.append(std_train)
+
         best_scores.append(test_scores[test_scores.index(min(test_scores))])
         best_stds.append(test_stds[test_scores.index(min(test_scores))])
+
+        # best_scores.append(test_scores_train[test_scores_train.index(min(test_scores_train))])
+        # best_stds.append(test_stds_train[test_scores_train.index(min(test_scores_train))])
 
         print("modelisation done")
 
@@ -166,12 +195,11 @@ def training_pipeline(
                 path_intermediary,
                 summary_metrics_detailed,
                 estimated_scopes,
-                training_parameters,
                 open_data,
                 path_models,
             )
-
-            # results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst)
+    if save:
+        results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst)
 
     # Only to test CF3_E = CF123_E - CF1_E - CF2_E
     # summary_global, rmse, std = metrics(
