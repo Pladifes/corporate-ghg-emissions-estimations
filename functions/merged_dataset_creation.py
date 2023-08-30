@@ -190,7 +190,7 @@ def merge_datasets(
     CarbonPricing_Transposed,
     IncomeGroup_Transposed,
     FuelIntensity_Transposed,
-    CDP_preprocessed,
+    CDP_preprocessed=None,
 ):
     """
     This function merges several DataFrames containing different types of data related to companies. The merged DataFrame includes columns from each input DataFrame as well as newly created columns.
@@ -225,40 +225,45 @@ def merge_datasets(
 
     df_merged.drop(["TR Name_y", "TR Name_x"], axis=1, inplace=True)
 
-    Refinitiv_ISINs = df_merged[["Name", "ISIN"]].drop_duplicates()
-    Refinitiv_Tickers = df_merged[["Name", "Ticker"]].drop_duplicates()
+    if CDP_preprocessed is not None:
+        Refinitiv_ISINs = df_merged[["Name", "ISIN"]].drop_duplicates()
+        Refinitiv_Tickers = df_merged[["Name", "Ticker"]].drop_duplicates()
 
-    for acc in CDP_preprocessed.account_id.unique():
-        isin_to_check = pd.Series(CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_isin"].sum()).unique()
-        for isinn in isin_to_check:
-            if isinn in Refinitiv_ISINs["ISIN"].unique():
-                name_ref = Refinitiv_ISINs[Refinitiv_ISINs["ISIN"] == isinn]["Name"].values[0]
-                CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
-                    name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
-                ]
+        for acc in CDP_preprocessed.account_id.unique():
+            isin_to_check = pd.Series(CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_isin"].sum()).unique()
+            for isinn in isin_to_check:
+                if isinn in Refinitiv_ISINs["ISIN"].unique():
+                    name_ref = Refinitiv_ISINs[Refinitiv_ISINs["ISIN"] == isinn]["Name"].values[0]
+                    CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
+                        name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
+                    ]
 
-        ticker_to_check = pd.Series(CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_ticker"].sum()).unique()
-        for tick in ticker_to_check:
-            if tick in Refinitiv_Tickers["Ticker"].unique():
-                name_ref = Refinitiv_Tickers[Refinitiv_Tickers["Ticker"] == tick]["Name"].values[0]
-                CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
-                    name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
-                ]
+            ticker_to_check = pd.Series(
+                CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_ticker"].sum()
+            ).unique()
+            for tick in ticker_to_check:
+                if tick in Refinitiv_Tickers["Ticker"].unique():
+                    name_ref = Refinitiv_Tickers[Refinitiv_Tickers["Ticker"] == tick]["Name"].values[0]
+                    CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
+                        name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
+                    ]
 
-    df_merged = df_merged.rename(columns={"CF1": "ref_CF1", "CF2": "ref_CF2", "CF3": "ref_CF3", "CF123": "ref_CF123"})
-    CDP_preprocessed = CDP_preprocessed.rename(columns={"accounting_year": "FiscalYear", "name_merge": "Name"})
-    lst_columns_tomerge = [
-        "FiscalYear",
-        "CDP_CF1",
-        "CDP_CF2_location",
-        "CDP_CF2_market",
-        "CDP_CF3",
-        "CDP_CF123",
-        "boundary",
-        "covered_countries",
-        "Name",
-    ]
-    df_merged = df_merged.merge(CDP_preprocessed[lst_columns_tomerge], how="left", on=["Name", "FiscalYear"])
+        df_merged = df_merged.rename(
+            columns={"CF1": "ref_CF1", "CF2": "ref_CF2", "CF3": "ref_CF3", "CF123": "ref_CF123"}
+        )
+        CDP_preprocessed = CDP_preprocessed.rename(columns={"accounting_year": "FiscalYear", "name_merge": "Name"})
+        lst_columns_tomerge = [
+            "FiscalYear",
+            "CDP_CF1",
+            "CDP_CF2_location",
+            "CDP_CF2_market",
+            "CDP_CF3",
+            "CDP_CF123",
+            "boundary",
+            "covered_countries",
+            "Name",
+        ]
+        df_merged = df_merged.merge(CDP_preprocessed[lst_columns_tomerge], how="left", on=["Name", "FiscalYear"])
 
     return df_merged
 

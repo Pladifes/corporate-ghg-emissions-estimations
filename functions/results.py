@@ -160,10 +160,6 @@ def scopes_report(
     best_model,
     estimated_scopes,
     path_intermediary,
-    fill_grp,
-    old_pipe,
-    threshold_under,
-    threshold_over,
     open_data,
     path_models,
 ):
@@ -211,26 +207,11 @@ def scopes_report(
         dataset,
         path_intermediary,
         train=True,
-        fill_grp=fill_grp,
-        old_pipe=old_pipe,
         open_data=open_data,
     )
     final_dataset = set_columns(final_dataset, features)
 
     final_dataset_train = target_preprocessing(final_dataset, target)
-    if target in ["CF1_log", "CF3_log", "CF2_log", "CF123_log"]:
-        final_dataset_train = outliers_preprocess(
-            final_dataset_train, target, threshold_under=threshold_under, threshold_over=threshold_over
-        )
-    elif target in ["CF1_log_CF123", "CF3_log_CF123", "CF2_log_CF123"]:
-        target = target[:-6]
-        final_dataset_train = outliers_preprocess(
-            final_dataset_train, target, threshold_under=threshold_under, threshold_over=threshold_over
-        )
-
-    else:
-        print("unexpected target name, error")
-
     final_model = best_model.fit(final_dataset_train[features], final_dataset_train[target])
     final_y_pred = final_model.predict(final_dataset[features])
 
@@ -276,8 +257,8 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
     for k in range(n_split):
         rmses.append(
             mean_squared_error(
-                y_test[int(k * l_test / n_split): int((k + 1) * l_test / n_split)],
-                y_pred[int(k * l_test / n_split): int((k + 1) * l_test / n_split)],
+                y_test[int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
+                y_pred[int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
                 squared=False,
             )
         )
@@ -325,10 +306,6 @@ def best_model_analysis(
         best_model,
         estimated_scopes,
         path_intermediary,
-        fill_grp=training_parameters["fill_grp"],
-        old_pipe=training_parameters["old_pipe"],
-        threshold_under=training_parameters["threshold_under"],
-        threshold_over=training_parameters["threshold_over"],
         open_data=open_data,
         path_models=path_models,
     )
@@ -352,7 +329,7 @@ def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Fi
     merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
     # merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
     # merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
-    merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
+    # merged_df.sort_values(by=["Name", "FiscalYear"]).reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)

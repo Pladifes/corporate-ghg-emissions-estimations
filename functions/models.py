@@ -52,13 +52,14 @@ def features_selectkbest(df, target):
     return all_features
 
 
-def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_iter=10, seed=None, custom_gradient=False):
+def xgboost_model(
+    X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_iter=10, seed=None, weights=None, custom_gradient=False
+):
     """
     This function returns a XGBoost model for regression tasks
     Warning : if cross_val is set True, the function is way longer (several minutes,
     often less than an hour)
     """
-
     model = XGBRegressor(random_state=seed, verbosity=0)
 
     if cross_val:
@@ -102,7 +103,25 @@ def xgboost_model(X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_ite
             subsample=xgb_bo.max["params"]["subsample"],
             colsample_bytree=xgb_bo.max["params"]["colsample_bytree"],
         )
-    model.fit(X_train, y_train, verbose=False)
+
+    if custom_gradient:
+        print("error, no custom gradient with xgboost, error")
+
+    else:
+        if weights is not None:
+            model.fit(
+                X_train,
+                y_train,
+                sample_weight=weights,
+                verbose=False,
+            )
+        else:
+            model.fit(
+                X_train,
+                y_train,
+                verbose=False,
+            )
+
     return model
 
 
@@ -115,9 +134,13 @@ def lgbm_model(
     often less than an hour)
     """
     verbose -= 1
+    # global companies_lst
+
     if custom_gradient == "L1":
+        # companies_lst = pd.read_csv("data/intermediary_data/companies_ids.csv").squeeze().tolist()
         model = LGBMRegressor(verbose=verbose, random_state=seed, objective=RmseObjectiveL1().calc_ders_range)
     elif custom_gradient == "L2":
+        # companies_lst = pd.read_csv("data/intermediary_data/companies_ids.csv").squeeze().tolist()
         model = LGBMRegressor(verbose=verbose, random_state=seed, objective=RmseObjectiveL2().calc_ders_range)
     else:
         model = LGBMRegressor(verbose=verbose, random_state=seed)
@@ -219,11 +242,15 @@ def catboost_model(
     Warning : if cross_val is set True, the function is way longer (several minutes,
     often less than an hour)
     """
+    # global companies_lst
+
     if custom_gradient == "L1":
+        # companies_lst = pd.read_csv("data/intermediary_data/companies_ids.csv").squeeze().tolist()
         model = CatBoostRegressor(
             verbose=verbose, random_state=seed, loss_function=RmseObjectiveL1(), eval_metric=RmseMetric()
         )
     elif custom_gradient == "L2":
+        # companies_lst = pd.read_csv("data/intermediary_data/companies_ids.csv").squeeze().tolist()
         model = CatBoostRegressor(
             verbose=verbose, random_state=seed, loss_function=RmseObjectiveL2(), eval_metric=RmseMetric()
         )
@@ -295,24 +322,22 @@ class RmseObjectiveL1(object):
         assert len(approxes) == len(targets)
         if weights is not None:
             assert len(weights) == len(approxes)
-        der1, der2 = [], []
 
-        for index in range(len(targets)):
-            der1.append(targets[index] - approxes[index])
-            der2.append(-1)
+        der1 = weights * np.sign(targets - approxes)
+        der2 = np.ones(len(targets)) * -1
 
-        companies_ids = pd.read_csv("data/intermediary_data/companies_ids.csv")
-        for corpo_id in companies_ids:
-            lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
-            corpo_der_sum = sum([der1[i] for i in range(lst_idx)])  # use L1 norm, simplest to implement ?
-            # corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
-            # der1[i] = der1[i] / corpo_der_sum
-            weights.loc[lst_idx, "weight_final"] = weights.loc[lst_idx, "weight_final"] / corpo_der_sum  # normalisation
+        # companies_ids = pd.Series(companies_lst, name="FinalEikonID").to_frame()
+        # for corpo_id in companies_ids.FinalEikonID:
+        #     lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
+        #     corpo_der_sum = sum([der1[i] for i in lst_idx])  # use L1 norm, simplest to implement ?
+        #     # corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
+        #     # der1[i] = der1[i] / corpo_der_sum
+        #     weights[lst_idx] = weights[lst_idx] / corpo_der_sum  # normalisation
 
-        for index in range(len(targets)):
-            if weights is not None:
-                der1[index] *= weights["weight_final"]
-                der2[index] *= weights["weight_final"]
+        # for index in range(len(targets)):
+        #     if weights is not None:
+        #         der1[index] *= weights
+        #         der2[index] *= weights
 
         result = np.array([der1, der2]).reshape(-1, 2)
         return result
@@ -324,24 +349,21 @@ class RmseObjectiveL2(object):
         if weights is not None:
             assert len(weights) == len(approxes)
 
-        der1, der2 = [], []
+        der1 = weights * np.array([np.sign(targets[i] - approxes[i] for i in range(len(targets)))])
+        der2 = np.ones(len(targets)) * -1
 
-        for index in range(len(targets)):
-            der1.append(targets[index] - approxes[index])
-            der2.append(-1)
+        # companies_ids = pd.Series(companies_lst, name="FinalEikonID").to_frame()
+        # for corpo_id in companies_ids.FinalEikonID:
+        #     lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
+        #     # corpo_der_sum = sum([der1[i] for i in lst_idx])  # use L1 norm, simplest to implement ?
+        #     corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
+        #     # der1[i] = der1[i] / corpo_der_sum
+        #     weights[lst_idx] = weights[lst_idx] / corpo_der_sum  # normalisation
 
-        companies_ids = pd.read_csv("data/intermediary_data/companies_ids.csv")
-        for corpo_id in companies_ids:
-            lst_idx = companies_ids[companies_ids.FinalEikonID == corpo_id].index
-            corpo_der_sum = sum([der1[i] for i in range(lst_idx)])  # use L1 norm, simplest to implement ?
-            # corpo_der_sum = np.sqrt(sum([der1[i] ** 2 for i in range(lst_idx)]))  # use L2 norm, better properties ?
-            # der1[i] = der1[i] / corpo_der_sum
-            weights.loc[lst_idx, "weight_final"] = weights.loc[lst_idx, "weight_final"] / corpo_der_sum  # normalisation
-
-        for index in range(len(targets)):
-            if weights is not None:
-                der1[index] *= weights["weight_final"]
-                der2[index] *= weights["weight_final"]
+        # for index in range(len(targets)):
+        #     if weights is not None:
+        #         der1[index] *= weights
+        #         der2[index] *= weights
 
         result = np.array([der1, der2]).reshape(-1, 2)
         return result

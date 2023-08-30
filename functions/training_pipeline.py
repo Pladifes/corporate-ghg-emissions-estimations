@@ -11,6 +11,11 @@ from functions.preprocessing import custom_train_split
 from functions.results import best_model_analysis, metrics, results
 
 
+def companies_occurences(df):
+    nb_occurences = df.FinalEikonID.value_counts()
+    return df.apply(lambda row: 1 / nb_occurences[row["FinalEikonID"]], axis=1).values
+
+
 def weights_creation(df, target, companies=True):
     target = target[:-4]
     df["weight_reliability"] = np.ones(len(df))
@@ -18,17 +23,15 @@ def weights_creation(df, target, companies=True):
     df.loc[CDP_indexes, "weight_reliability"] = [2 for i in range(len(CDP_indexes))]
 
     nb_occurences = df["country_sector"].value_counts()
-    df["weight_country_sector"] = df.apply(lambda row: 1 / nb_occurences[row["country_sector"]])
+    df["weight_country_sector"] = df.apply(lambda row: 1 / nb_occurences[row["country_sector"]], axis=1)
 
     if companies:
-        nb_occurences = df.FinalEikonID.value_counts()
-        df["weight_companies"] = df.apply(lambda row: 1 / nb_occurences[row["FinalEikonID"]])
-
+        df["weight_companies"] = companies_occurences(df)
         df["weight_final"] = df["weight_reliability"] * df["weight_companies"] * df["weight_country_sector"]
     else:
         df["weight_final"] = df["weight_reliability"] * df["weight_country_sector"]
 
-    return df[["weight_final", "FinalEikonID"]]
+    return np.array(df["weight_final"].tolist())
 
 
 def training_pipeline(
@@ -48,8 +51,8 @@ def training_pipeline(
     training_parameters,
     open_data=False,
     save=False,
-    weights=None,
-    companies=True,
+    use_weights=False,
+    companies=False,
     custom_gradient=False,
 ):
     """
@@ -57,6 +60,11 @@ def training_pipeline(
     """
     best_scores = []
     best_stds = []
+
+    # Only to test CF3_E = CF123_E - CF1_E - CF2_E
+    # store_pred = []
+    # store_test = []
+
     mlflow.create_experiment("" f"Models_{name_experiment}")
     mlflow.set_experiment("" f"Models_{name_experiment}")
 
@@ -75,20 +83,34 @@ def training_pipeline(
             path_Benchmark,
             path_intermediary,
             target,
-            # threshold_under=training_parameters["threshold_under"],
-            # threshold_over=training_parameters["threshold_over"],
             extended_features=training_parameters["extended_features"],
             selec_sect=training_parameters["selec_sect"],
-            fill_grp=training_parameters["fill_grp"],
-            old_pipe=training_parameters["old_pipe"],
             open_data=open_data,
         )
         print("preprocessing done")
-        if weights:
+        if use_weights or custom_gradient:
             df_train_merged = X_train.join(
-                preprocessed_dataset[["CDP_CF1", "CDP_CF2", "CDP_CF3", "CDP_CF123", "country_sector"]]
-            )  # (11056, 281)
-            weights = weights_creation(df_train_merged, target, companies)
+                preprocessed_dataset[
+                    [
+                        "CF1",
+                        "CF2",
+                        "CF3",
+                        "CF123",
+                        "CDP_CF1",
+                        "CDP_CF2",
+                        "CDP_CF3",
+                        "CDP_CF123",
+                        "country_sector",
+                        "FinalEikonID",
+                    ]
+                ]
+            )
+            if custom_gradient:
+                weights = companies_occurences(df_train_merged)
+            else:
+                weights = weights_creation(df_train_merged, target, companies)
+        else:
+            weights = None
 
         seed = training_parameters["seed"]
         n_iter = training_parameters["n_iter"]
@@ -107,6 +129,9 @@ def training_pipeline(
                 )
                 y_pred = model_i.predict(X_test)
 
+                # store_pred.append(y_pred)
+                # store_test.append(y_test)
+
                 summary_global, rmse, std = metrics(y_test, y_pred, Summary_Final, target, model_name)
                 mlflow.log_metric("mae", mean_absolute_error(y_test, y_pred))
                 mlflow.log_metric("rmse", mean_squared_error(y_test, y_pred, squared=False))
@@ -123,6 +148,7 @@ def training_pipeline(
 
         best_scores.append(test_scores[test_scores.index(min(test_scores))])
         best_stds.append(test_stds[test_scores.index(min(test_scores))])
+
         print("modelisation done")
 
         if save:
@@ -145,6 +171,13 @@ def training_pipeline(
                 path_models,
             )
 
-            results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst)
+            # results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst)
+
+    # Only to test CF3_E = CF123_E - CF1_E - CF2_E
+    # summary_global, rmse, std = metrics(
+    #     store_test[2], store_pred[3] - store_pred[0] - store_pred[1], Summary_Final, "CF3bis", "models difference"
+    # )
+    # best_scores.append(rmse)
+    # best_stds.append(std)
 
     return best_scores, best_stds, summary_global, summary_metrics_detailed
