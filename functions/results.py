@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import shap
 import pickle
 from sklearn.metrics import (
     mean_squared_error,
@@ -13,10 +11,38 @@ from pandas_profiling import ProfileReport
 
 from functions.preprocessing import encoding
 from functions.preprocessing import set_columns
-from functions.preprocessing import target_preprocessing, outliers_preprocess
+from functions.preprocessing import target_preprocessing
+from functions.plot_functions import plot, plot_detailed
 
 
-def summary_detailed(X_test, y_test, y_pred, df_test, target, open_data):
+def GICS_to_name(GICSSector):
+    if GICSSector == 10.0:
+        return "Energy"
+    elif GICSSector == 15.0:
+        return "Materials"
+    elif GICSSector == 20.0:
+        return "Industrials"
+    elif GICSSector == 25.0:
+        return "Cons. Discretionary"
+    elif GICSSector == 30.0:
+        return "Cons. Staples"
+    elif GICSSector == 35.0:
+        return "Health Care"
+    elif GICSSector == 40.0:
+        return "Financials"
+    elif GICSSector == 45.0:
+        return "IT"
+    elif GICSSector == 50.0:
+        return "Telecommunication"
+    elif GICSSector == 55.0:
+        return "Utilities"
+    elif GICSSector == 60.0:
+        return "Real Estate"
+    else:
+        return GICSSector
+
+
+def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_features, path_plot):
     """
     Generates a summary of the model performance by sector and region for a given target variable.
 
@@ -40,44 +66,70 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, open_data):
         - "R2",
         - scope"
     """
+    n_split = 10
     summary_region_sector = pd.DataFrame()
     deciles = pd.qcut(df_test["Revenue"], 10, labels=False)
     df_test_copy = df_test.copy()
     df_test_copy["Revenuebuckets"] = deciles
-    # bucket_summary = df_test_copy.groupby("Revenuebuckets")["Revenue"].agg(["min", "max", "count", "mean"])
-    # bucket_summary.to_csv("bucket_summary.csv")
+    df_test_copy["Sectors"] = df_test_copy["GICSSector"].astype(float).apply(GICS_to_name)
 
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred
     X_test_copy["y_test"] = y_test
-    X_test_copy.loc[:, "SubSector"] = df_test_copy.GICSName
-    X_test_copy.loc[:, "Revenuebuckets"] = df_test_copy.Revenuebuckets
-    X_test_copy.loc[:, "Region"] = df_test_copy.Region
+    X_test_copy["SubSector"] = df_test_copy.GICSName.values
+    X_test_copy["Revenuebucket"] = df_test_copy.Revenuebuckets.values
+    X_test_copy["Region"] = df_test_copy.Region.values
+    X_test_copy["Country"] = df_test_copy.CountryHQ.values
+    X_test_copy["Year"] = df_test_copy.FiscalYear.values
 
-    if not open_data:
-        X_test_copy.loc[:, "ENEConsume_log"] = df_test_copy.ENEConsume_log.isna()
-        X_test_copy.loc[:, "ENEProduce_log"] = df_test_copy.ENEProduce_log.isna()
-        X_test_copy.loc[:, "SectorName"] = df_test_copy.GICSSector
-        categories = ["Region", "Revenuebuckets", "SubSector", "SectorName", "ENEConsume_log", "ENEProduce_log"]
+    if not restricted_features:
+        X_test_copy["ENEConsume"] = df_test_copy.ENEConsume_y.isna().values
+        X_test_copy["ENEProduce"] = df_test_copy.ENEProduce_y.isna().values
+        X_test_copy["Industry"] = df_test_copy.Sectors.values
+        categories = [
+            "Revenuebucket",
+            "Region",
+            "Country",
+            "Industry",
+            "SubSector",
+            "Year",
+            "ENEConsume",
+            "ENEProduce",
+        ]
     else:
-        categories = ["Region", "Revenuebuckets", "SubSector"]
+        categories = ["Revenuebucket", "Region", "Country", "SubSector", "Year"]
 
     for category in categories:
+        rmses_df = pd.DataFrame([], columns=["rmses", category])
         unique = list(X_test_copy[category].unique())
-        for value in unique:
+        for i, value in enumerate(unique):
             mask = X_test_copy[category] == value
             rmse = np.sqrt(mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]))
             mse = mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             mae = mean_absolute_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             mape = mean_absolute_percentage_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             r2 = r2_score(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
-            std = np.std(X_test_copy[mask]["y_test"] - X_test_copy[mask]["y_pred"])
+            rmses = []
+            l_test = len(X_test_copy[mask]["y_test"])
+            if len(X_test_copy[mask]) >= n_split:
+                for k in range(n_split):
+                    rmses.append(
+                        mean_squared_error(
+                            X_test_copy[mask]["y_test"][int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
+                            X_test_copy[mask]["y_pred"][int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
+                            squared=False,
+                        )
+                    )
+                std = np.std(rmses)
+                rmses_df_temp = pd.DataFrame([[rmse, value] for rmse in rmses], columns=["rmses", category])
+                rmses_df = pd.concat([rmses_df, rmses_df_temp])
+            else:
+                std = np.nan
 
             summary = pd.DataFrame(
                 {
                     "category": category,
                     "scope": target,
-                    # "model_name": model_name,
                     "category_name": value,
                     "RMSE": rmse,
                     "MSE": mse,
@@ -91,65 +143,15 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, open_data):
 
             summary_region_sector = pd.concat([summary_region_sector, summary], ignore_index=True)
 
+        if category in ["ENEConsume", "ENEProduce"]:
+            rmses_df = rmses_df.replace({True: "No values", False: "With values"})
+        sorted_categs = rmses_df.groupby(category).median().sort_values(by="rmses", ascending=False).index
+        categ_type = pd.CategoricalDtype(categories=sorted_categs, ordered=True)
+        rmses_df[category] = pd.Series(rmses_df[category], dtype=categ_type)
+        rmses_df = rmses_df.sort_values(by=[category])
+        plot_detailed(rmses_df, target, path_plot, category)
+
     return summary_region_sector
-
-
-def plot(model, X, y_test, y_pred, plot_path, target):
-    """
-    This function generates three plots for evaluating the machine learning model's performance :
-
-    A SHAP values plot showing the impact of each feature on the model's predictions.
-    A scatter plot comparing the actual values against the predicted values.
-    A residual plot showing the distribution of the difference between actual and predicted values.
-    Parameters:
-
-    model: The trained machine learning model to be evaluated.
-    X: The feature matrix for the test dataset.
-    y_test: The ground truth labels for the test dataset.
-    y_pred: The predicted labels for the test dataset.
-    plot_path: The directory where the plots will be saved.
-    target: The name of the target variable.
-    model_name: The name of the machine learning model.
-    Returns:
-    plots saved in plot_path
-    """
-
-    def plot_shap_values(model, X):
-        explainer = shap.Explainer(model)
-        shap_values = explainer.shap_values(X)
-        explanation = shap.Explanation(
-            values=shap_values,
-            base_values=explainer.expected_value,
-            data=X,
-            feature_names=list(X.columns),
-        )
-        shap.plots.beeswarm(explanation, show=False, color_bar=False)
-        plt.colorbar()
-        plt.savefig(plot_path + f"shap_{target}.png")
-        plt.show()
-
-    def plot_y_test_y_pred(y_test, y_pred):
-        plt.scatter(y_test, y_pred)
-        plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "k--", lw=4)
-        plt.xlabel("Actual Values")
-        plt.ylabel("Predicted Values")
-        plt.title("Actual vs. Predicted Values")
-        plt.savefig(plot_path + f"y_test_y_pred_{target}.png")
-        plt.show()
-
-    def plot_residuals(y_test, y_pred):
-        residuals = y_test - y_pred
-        plt.scatter(y_pred, residuals)
-        plt.axhline(y=0, color="r", linestyle="-")
-        plt.title("Residual Plot")
-        plt.xlabel("Predicted Values")
-        plt.ylabel("Residuals")
-        plt.savefig(plot_path + f"residus_{target}.png")
-        plt.show()
-
-    plot_shap_values(model, X)
-    plot_y_test_y_pred(y_test, y_pred)
-    plot_residuals(y_test, y_pred)
 
 
 def scopes_report(
@@ -158,7 +160,7 @@ def scopes_report(
     best_model,
     estimated_scopes,
     path_intermediary,
-    open_data,
+    restricted_features,
     path_models,
 ):
     """
@@ -187,7 +189,7 @@ def scopes_report(
         dataset,
         path_intermediary,
         train=True,
-        open_data=open_data,
+        restricted_features=restricted_features,
     )
     final_dataset = set_columns(final_dataset, features)
 
@@ -204,7 +206,7 @@ def scopes_report(
     return estimated_scopes, lst
 
 
-def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
+def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=10):
     """
     This function computes several evaluation metrics for a machine learning model's performance on a given dataset:
 
@@ -243,8 +245,6 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=5):
             )
         )
     std = np.std(rmses)
-
-    # std = np.std(y_test - y_pred)
     Summary_Final.append(
         {
             "Target": target,
@@ -273,12 +273,12 @@ def best_model_analysis(
     path_intermediary,
     summary_metrics_detailed,
     estimated_scopes,
-    open_data,
+    restricted_features,
     path_models,
 ):
     y_pred_best = best_model.predict(X_test)
     plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
-    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target, open_data)
+    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot)
     summary_metrics_detailed = pd.concat([summary_metrics_detailed, metrics_scope], ignore_index=True)
 
     estimated_scopes, lst = scopes_report(
@@ -287,7 +287,7 @@ def best_model_analysis(
         best_model,
         estimated_scopes,
         path_intermediary,
-        open_data=open_data,
+        restricted_features=restricted_features,
         path_models=path_models,
     )
     return summary_metrics_detailed, estimated_scopes, lst

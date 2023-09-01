@@ -98,7 +98,7 @@ def apply_model_on_forbes_data(
             df_forbes_merged,
             path_intermediary,
             train=False,
-            open_data=True,
+            restricted_features=True,
         )
         features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
         dataset = set_columns(dataset, features)
