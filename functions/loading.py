@@ -5,6 +5,7 @@ import pandas as pd
 
 
 from functions.merged_dataset_creation import create_preprocessed_dataset
+from functions.preprocessing import outliers_preprocess
 
 
 def country_region_mapping(path, df):
@@ -17,7 +18,7 @@ def country_region_mapping(path, df):
     return df
 
 
-def load_data(path, save=False):
+def load_data(path, filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False):
     """
     This function loads pre-downloaded datasets in the paths.
     Beware, if one is missing, code will return an error.
@@ -47,5 +48,20 @@ def load_data(path, save=False):
         )
         if save:
             preprocessed_dataset.to_parquet(path + "CGEE_preprocessed_dataset_2023.parquet")
+
+    preprocessed_dataset["CF1"] = preprocessed_dataset["CF1_merge"]
+    preprocessed_dataset["CF2"] = preprocessed_dataset["CF2_merge"]
+    preprocessed_dataset["CF3"] = preprocessed_dataset["CF3_merge"]
+    preprocessed_dataset["CF123"] = preprocessed_dataset["CF123_merge"]
+    preprocessed_dataset["CDP_CF2"] = preprocessed_dataset["CDP_CF2_location"]
+    preprocessed_dataset["country_sector"] = (
+        preprocessed_dataset["CountryHQ"].astype(str) + "_" + preprocessed_dataset["GICSSubInd"].astype(str)
+    )
+
+    if filter_outliers:
+        for target in ["CF1_merge", "CF2_merge", "CF3_merge", "CF123_merge"]:
+            preprocessed_dataset = outliers_preprocess(
+                preprocessed_dataset, target, threshold_under=threshold_under, threshold_over=threshold_over
+            )
 
     return preprocessed_dataset

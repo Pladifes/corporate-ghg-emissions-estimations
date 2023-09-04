@@ -4,15 +4,14 @@ import numpy as np
 
 
 from functions.merged_dataset_creation import CarbonPricing_preprocess, IncomeGroup_preprocess, merge_datasets
-
 from functions.preprocessing import encoding, set_columns
 
 
 def apply_model_on_forbes_data(
-    path_rawdata,
-    path_results,
-    path_intermediary,
-    path_models,
+    path_rawdata="data/raw_data/",
+    path_results="results/",
+    path_intermediary="data/intermediary_data/",
+    path_models="models/",
     save=False,
 ):
     """
@@ -115,3 +114,34 @@ def apply_model_on_forbes_data(
         df_forbes.to_excel(path_results + "Pladifes_free_emissions_estimates.xlsx", index=False)
 
     return df_forbes
+
+
+def apply_model_on_raw_data(
+    dataset, path_intermediary="data/intermediary_data", path_models="models/", path_results="results/", save=False
+):
+    """
+    This function apply pre saved models to raw data to predict scope 1, 2 and 3 emissions.
+    """
+    estimations = dataset[["FinalEikonID", "FiscalYear", "ISIN", "Ticker", "GICSName"]]
+    for scope in ["CF1", "CF2", "CF3", "CF123"]:
+        preprocessed_dataset = encoding(
+            dataset,
+            path_intermediary,
+            train=False,
+            restricted_features=True,
+        )
+        features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
+        preprocessed_dataset = set_columns(preprocessed_dataset, features)
+        preprocessed_dataset = preprocessed_dataset[features]
+        reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))
+        scope_pred = reg.predict(preprocessed_dataset)
+        estimations[scope + "_E"] = np.power(10, scope_pred + 1)
+
+    estimations["CF1_E + CF2_E + CF3_E"] = (
+        estimations["CF1_E"] + estimations["CF2_E"] + estimations["CF3_E"] + estimations["CF123_E"]
+    )
+
+    if save:
+        estimations.to_excel(path_results + "Pladifes_free_emissions_estimates.xlsx", index=False)
+
+    return estimations

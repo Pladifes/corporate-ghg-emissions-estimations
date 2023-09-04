@@ -132,3 +132,5 @@ mlruns/
 GHG_estimation_tests_all.ipynb
 results/
 models/
+models/open_data
+models/proprietary_data
