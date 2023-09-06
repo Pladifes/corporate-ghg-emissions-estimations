@@ -1,5 +1,3 @@
-import numpy as np
-
 from sklearn.model_selection import cross_val_score
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
@@ -184,14 +182,7 @@ def catboost_model(
             }
             model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
             score = cross_val_score(model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs).mean()
-            # score = -cross_val_score(
-            #     model,
-            #     X_train,
-            #     y_train,
-            #     cv=3,
-            #     scoring="neg_root_mean_squared_error",
-            #     n_jobs=n_jobs,
-            # ).mean()
+
             return score
 
         catboost_bo = BayesianOptimization(
