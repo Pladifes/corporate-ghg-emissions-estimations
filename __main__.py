@@ -1,6 +1,5 @@
 from functions.production_pipeline import production_pipeline
 
-
 restricted_features = True
 
 if __name__ == "__main__":

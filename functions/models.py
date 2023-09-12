@@ -8,18 +8,40 @@ from bayes_opt import BayesianOptimization
 
 
 def xgboost_model(
-    X_train, y_train, cross_val=False, verbose=0, n_jobs=-1, n_iter=10, seed=None, weights=None, custom_gradient=False
+    X_train,
+    y_train,
+    cross_val=False,
+    verbose=0,
+    n_jobs=-1,
+    n_iter=10,
+    seed=None,
+    weights=None,
+    custom_gradient=False,
 ):
     """
-    This function returns a XGBoost model for regression tasks
-    Warning : if cross_val is set True, the function is way longer (several minutes,
-    often less than an hour)
+    Create an XGBoost regression model.
+
+    Parameters:
+    - X_train (array-like or pd.DataFrame): The training data.
+    - y_train (array-like or pd.Series): The target variable for training.
+    - cross_val (bool): If True, perform Bayesian hyperparameter optimization using cross-validation.
+    - verbose (int): Controls the verbosity of the XGBoost model (0 for silent).
+    - n_jobs (int): Number of CPU cores to use for parallel execution during cross-validation.
+    - n_iter (int): Number of iterations for Bayesian optimization if cross-validation is enabled.
+    - seed (int): Random seed for reproducibility.
+    - weights (array-like): Sample weights for training data (optional).
+    - custom_gradient (bool): If True, enable custom gradient (not supported by XGBoost).
+
+    Returns:
+    - model (XGBRegressor): The trained XGBoost regression model.
     """
     model = XGBRegressor(random_state=seed, verbosity=0)
 
     if cross_val:
 
-        def xgb_evaluate(n_estimators, learning_rate, max_depth, gamma, subsample, colsample_bytree):
+        def xgb_evaluate(
+            n_estimators, learning_rate, max_depth, gamma, subsample, colsample_bytree
+        ):
             params = {
                 "n_estimators": int(n_estimators),
                 "learning_rate": learning_rate,
@@ -30,7 +52,9 @@ def xgboost_model(
             }
 
             model = XGBRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
+            score = cross_val_score(
+                model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs
+            ).mean()
             return score
 
         xgb_bo = BayesianOptimization(
@@ -81,12 +105,32 @@ def xgboost_model(
 
 
 def lgbm_model(
-    X_train, y_train, cross_val=False, n_jobs=-1, verbose=-1, n_iter=10, seed=None, weights=None, custom_gradient=False
+    X_train,
+    y_train,
+    cross_val=False,
+    n_jobs=-1,
+    verbose=-1,
+    n_iter=10,
+    seed=None,
+    weights=None,
+    custom_gradient=False,
 ):
     """
-    This function returns a LGBM model for regression tasks
-    Warning : if cross_val is set True, the function is way longer (several minutes,
-    often less than an hour)
+    Create a LightGBM (LGBM) regression model.
+
+    Parameters:
+    - X_train (array-like or pd.DataFrame): The training data.
+    - y_train (array-like or pd.Series): The target variable for training.
+    - cross_val (bool): If True, perform Bayesian hyperparameter optimization using cross-validation.
+    - n_jobs (int): Number of CPU cores to use for parallel execution during cross-validation.
+    - verbose (int): Controls the verbosity of the LGBM model (higher values for more information).
+    - n_iter (int): Number of iterations for Bayesian optimization if cross-validation is enabled.
+    - seed (int): Random seed for reproducibility.
+    - weights (array-like): Sample weights for training data (optional).
+    - custom_gradient (bool): If True, enable custom gradient (not supported by LightGBM).
+
+    Returns:
+    - model (LGBMRegressor): The trained LightGBM regression model.
     """
     verbose -= 1
     model = LGBMRegressor(verbose=verbose, random_state=seed)
@@ -121,7 +165,9 @@ def lgbm_model(
             }
 
             model = LGBMRegressor(random_state=seed, **params)
-            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs).mean()
+            score = cross_val_score(
+                model, X_train, y_train, scoring="r2", cv=3, n_jobs=n_jobs
+            ).mean()
             return score
 
         lgbm_bo = BayesianOptimization(
@@ -161,19 +207,41 @@ def lgbm_model(
 
 
 def catboost_model(
-    X_train, y_train, cross_val=False, n_jobs=-1, verbose=0, n_iter=10, seed=None, weights=None, custom_gradient=False
+    X_train,
+    y_train,
+    cross_val=False,
+    n_jobs=-1,
+    verbose=0,
+    n_iter=10,
+    seed=None,
+    weights=None,
+    custom_gradient=False,
 ):
     """
-    This function returns a CatBoost model
-    Warning : if cross_val is set True, the function is way longer (several minutes,
-    often less than an hour)
+    Create a CatBoost regression model.
+
+    Parameters:
+    - X_train (array-like or pd.DataFrame): The training data.
+    - y_train (array-like or pd.Series): The target variable for training.
+    - cross_val (bool): If True, perform Bayesian hyperparameter optimization using cross-validation.
+    - n_jobs (int): Number of CPU cores to use for parallel execution during cross-validation.
+    - verbose (int): Controls the verbosity of the CatBoost model (higher values for more information).
+    - n_iter (int): Number of iterations for Bayesian optimization if cross-validation is enabled.
+    - seed (int): Random seed for reproducibility.
+    - weights (array-like): Sample weights for training data (optional).
+    - custom_gradient (bool): If True, enable custom gradient (not supported by CatBoost).
+
+    Returns:
+    - model (CatBoostRegressor): The trained CatBoost regression model.
     """
 
     model = CatBoostRegressor(verbose=verbose, random_state=seed)
 
     if cross_val:
 
-        def catboost_evaluate(depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations):
+        def catboost_evaluate(
+            depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations
+        ):
             params = {
                 "depth": int(depth),
                 "learning_rate": learning_rate,
@@ -183,7 +251,9 @@ def catboost_model(
                 "iterations": int(iterations),
             }
             model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs).mean()
+            score = cross_val_score(
+                model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs
+            ).mean()
             # score = -cross_val_score(
             #     model,
             #     X_train,

@@ -7,7 +7,19 @@ import pandas as pd
 
 def prepro_isin_ticker(isin):
     """
-    Cleans the CDP ISINs and Tickers before merge
+    Clean CDP ISINs and Tickers before merging.
+
+    Parameters:
+    - isin (str): The input string containing ISINs and Tickers separated by commas.
+
+    Returns:
+    - list: A list of cleaned ISINs and Tickers.
+
+    This function takes an input string 'isin' that contains ISINs and Tickers separated by commas.
+    It cleans each ISIN or Ticker by removing leading and trailing spaces. If 'isin' is not a string, it returns an empty list.
+
+    Example usage:
+    isin_list = prepro_isin_ticker("ISIN1, Ticker1, ISIN2, Ticker2")
     """
     if type(isin) == str:
         lst_isin = isin.split(",")
@@ -23,7 +35,20 @@ def prepro_isin_ticker(isin):
 
 def CDP_preprocess(df_CDP):
     """
-    Preprocesses the CDP dataset
+    Preprocesses the CDP dataset by performing the following steps:
+
+    1. Extracts ISIN and Ticker information and stores them in separate columns.
+    2. Initializes a 'name_merge' column with NaN values.
+    3. Identifies accounts without 'covered_countries' and accounts to fill.
+    4. Fills missing 'covered_countries' values in the DataFrame based on account information.
+    5. Initializes a 'CDP_CF123' column with NaN values.
+    6. Calculates and populates 'CDP_CF123' based on non-null values of 'CDP_CF1', 'CDP_CF2_location', and 'CDP_CF3'.
+
+    Parameters:
+    - df_CDP (DataFrame): The input CDP dataset DataFrame.
+
+    Returns:
+    - df_CDP (DataFrame): The preprocessed CDP dataset DataFrame.
     """
     df_CDP["lst_isin"] = df_CDP["isin"].apply(lambda x: prepro_isin_ticker(x))
     df_CDP["lst_ticker"] = df_CDP["ticker"].apply(lambda x: prepro_isin_ticker(x))
@@ -31,32 +56,48 @@ def CDP_preprocess(df_CDP):
 
     acc_without_covered = df_CDP[df_CDP["covered_countries"].isna()].account_id.unique()
     acc_to_fill = df_CDP[
-        (df_CDP["account_id"].isin(acc_without_covered)) & (df_CDP["covered_countries"].notna())
+        (df_CDP["account_id"].isin(acc_without_covered))
+        & (df_CDP["covered_countries"].notna())
     ].account_id.unique()
 
     for acc in acc_to_fill:  #
         df_acc = df_CDP[df_CDP.account_id == acc]
         if df_acc["covered_countries"].notna().any():
-            curr_col_value = df_acc["covered_countries"].loc[df_acc["covered_countries"].first_valid_index()]
+            curr_col_value = df_acc["covered_countries"].loc[
+                df_acc["covered_countries"].first_valid_index()
+            ]
             df_CDP.loc[
-                (df_CDP["covered_countries"].isna()) & (df_CDP.account_id == acc), "covered_countries"
+                (df_CDP["covered_countries"].isna()) & (df_CDP.account_id == acc),
+                "covered_countries",
             ] = curr_col_value
 
     df_CDP["CDP_CF123"] = [np.nan for i in range(len(df_CDP))]
-    sub_df_with_CF = df_CDP[(df_CDP.CDP_CF1.notna()) & (df_CDP.CDP_CF2_location.notna()) & (df_CDP.CDP_CF3.notna())]
+    sub_df_with_CF = df_CDP[
+        (df_CDP.CDP_CF1.notna())
+        & (df_CDP.CDP_CF2_location.notna())
+        & (df_CDP.CDP_CF3.notna())
+    ]
     df_CDP.loc[sub_df_with_CF.index, "CDP_CF123"] = (
-        sub_df_with_CF["CDP_CF1"] + sub_df_with_CF["CDP_CF2_location"] + sub_df_with_CF["CDP_CF3"]
+        sub_df_with_CF["CDP_CF1"]
+        + sub_df_with_CF["CDP_CF2_location"]
+        + sub_df_with_CF["CDP_CF3"]
     )
     return df_CDP
 
 
 def CarbonPricing_preprocess(CarbonPricing):
     """
-    This code snippet performs the following operations:
-    1. Selects specific columns from a pandas DataFrame called CarbonPricing.
-    2. Transposes the selected columns into rows.
-    3. Replaces any instances of "No" or "TBD" in the "Status" column of the transposed DataFrame with "No" and sets the corresponding values in the "CO2Law", "CO2Scheme", "CO2Status", and "CO2Coverage" columns to None.
+    Preprocesses a pandas DataFrame called 'CarbonPricing' to prepare it for further analysis. The following operations are performed:
 
+    1. Selects specific columns from the 'CarbonPricing' DataFrame.
+    2. Transposes the selected columns into rows.
+    3. Replaces instances of "No" or "TBD" in the 'Status' column with "No" and sets corresponding values in the 'CO2Law', 'CO2Scheme', 'CO2Status', and 'CO2Coverage' columns to None.
+
+    Parameters:
+    - CarbonPricing (DataFrame): The input DataFrame containing carbon pricing data.
+
+    Returns:
+    - CarbonPricing_Transposed (DataFrame): The preprocessed DataFrame with transposed and cleaned data.
     """
     CarbonPricing = CarbonPricing[
         [
@@ -127,9 +168,9 @@ def CarbonPricing_preprocess(CarbonPricing):
         CarbonPricing_Transposed1["Year"].str.extract(r"price_(\d{4})").astype(int)
     )
     CarbonPricing_Transposed1 = CarbonPricing_Transposed1.drop(columns=["Year"])
-    CarbonPricing_Transposed1 = CarbonPricing_Transposed1.sort_values(by=["TR Name", "FiscalYear"]).reset_index(
-        drop=True
-    )
+    CarbonPricing_Transposed1 = CarbonPricing_Transposed1.sort_values(
+        by=["TR Name", "FiscalYear"]
+    ).reset_index(drop=True)
 
     CarbonPricing_Transposed = pd.melt(
         CarbonPricing,
@@ -145,7 +186,9 @@ def CarbonPricing_preprocess(CarbonPricing):
         var_name="FiscalYear",
         value_name="Status",
     )
-    CarbonPricing_Transposed = CarbonPricing_Transposed.sort_values(by=["TR Name", "FiscalYear"]).reset_index(drop=True)
+    CarbonPricing_Transposed = CarbonPricing_Transposed.sort_values(
+        by=["TR Name", "FiscalYear"]
+    ).reset_index(drop=True)
     CarbonPricing_Transposed["Price"] = CarbonPricing_Transposed1["Price"]
 
     dict_names = {
@@ -153,11 +196,17 @@ def CarbonPricing_preprocess(CarbonPricing):
         "USA": "United States of America",
         "British Virgin Islands": "Virgin Islands; British",
     }
-    CarbonPricing_Transposed["TR Name"] = CarbonPricing_Transposed["TR Name"].replace(dict_names)
+    CarbonPricing_Transposed["TR Name"] = CarbonPricing_Transposed["TR Name"].replace(
+        dict_names
+    )
 
     mask = CarbonPricing_Transposed["Status"].isin(["No", "TBD"])
-    CarbonPricing_Transposed.loc[mask, ["CO2Law", "CO2Scheme", "CO2Status", "CO2Coverage"]] = ("No", None, None, None)
-    CarbonPricing_Transposed["FiscalYear"] = CarbonPricing_Transposed.FiscalYear.astype(int)
+    CarbonPricing_Transposed.loc[
+        mask, ["CO2Law", "CO2Scheme", "CO2Status", "CO2Coverage"]
+    ] = ("No", None, None, None)
+    CarbonPricing_Transposed["FiscalYear"] = CarbonPricing_Transposed.FiscalYear.astype(
+        int
+    )
 
     return CarbonPricing_Transposed
 
@@ -176,14 +225,20 @@ def IncomeGroup_preprocess(IncomeGroup):
         "TR Name", "Region", "FiscalYear", and "IncomeGroup".
     """
     IncomeGroup_Transposed = IncomeGroup.set_index(["TR Name"]).stack().reset_index()
-    IncomeGroup_Transposed = IncomeGroup_Transposed[IncomeGroup_Transposed.level_1 != "code"]
-    IncomeGroup_Transposed = IncomeGroup_Transposed.rename(columns={0: "IncomeGroup", "level_1": "FiscalYear"})
+    IncomeGroup_Transposed = IncomeGroup_Transposed[
+        IncomeGroup_Transposed.level_1 != "code"
+    ]
+    IncomeGroup_Transposed = IncomeGroup_Transposed.rename(
+        columns={0: "IncomeGroup", "level_1": "FiscalYear"}
+    )
 
     # attention c'était vraiment du gros bricolage ça
     # IncomeGroup_Transposed["IncomeGroup"] = IncomeGroup_Transposed["IncomeGroup"].str.replace(";", "")
     # IncomeGroup_Transposed["FiscalYear"] = IncomeGroup_Transposed["FiscalYear"].str.replace(";", "").astype(int)
 
-    IncomeGroup_Transposed = IncomeGroup_Transposed[IncomeGroup_Transposed["FiscalYear"] >= 2005]
+    IncomeGroup_Transposed = IncomeGroup_Transposed[
+        IncomeGroup_Transposed["FiscalYear"] >= 2005
+    ]
 
     return IncomeGroup_Transposed
 
@@ -233,12 +288,22 @@ def merge_datasets(
         Refinitiv_Tickers = df_merged[["Name", "Ticker"]].drop_duplicates()
 
         for acc in CDP_preprocessed.account_id.unique():
-            isin_to_check = pd.Series(CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_isin"].sum()).unique()
+            isin_to_check = pd.Series(
+                CDP_preprocessed[CDP_preprocessed.account_id == acc]["lst_isin"].sum()
+            ).unique()
             for isinn in isin_to_check:
                 if isinn in Refinitiv_ISINs["ISIN"].unique():
-                    name_ref = Refinitiv_ISINs[Refinitiv_ISINs["ISIN"] == isinn]["Name"].values[0]
-                    CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
-                        name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
+                    name_ref = Refinitiv_ISINs[Refinitiv_ISINs["ISIN"] == isinn][
+                        "Name"
+                    ].values[0]
+                    CDP_preprocessed.loc[
+                        CDP_preprocessed[CDP_preprocessed.account_id == acc].index,
+                        "name_merge",
+                    ] = [
+                        name_ref
+                        for i in range(
+                            len(CDP_preprocessed[CDP_preprocessed.account_id == acc])
+                        )
                     ]
 
             ticker_to_check = pd.Series(
@@ -246,15 +311,30 @@ def merge_datasets(
             ).unique()
             for tick in ticker_to_check:
                 if tick in Refinitiv_Tickers["Ticker"].unique():
-                    name_ref = Refinitiv_Tickers[Refinitiv_Tickers["Ticker"] == tick]["Name"].values[0]
-                    CDP_preprocessed.loc[CDP_preprocessed[CDP_preprocessed.account_id == acc].index, "name_merge"] = [
-                        name_ref for i in range(len(CDP_preprocessed[CDP_preprocessed.account_id == acc]))
+                    name_ref = Refinitiv_Tickers[Refinitiv_Tickers["Ticker"] == tick][
+                        "Name"
+                    ].values[0]
+                    CDP_preprocessed.loc[
+                        CDP_preprocessed[CDP_preprocessed.account_id == acc].index,
+                        "name_merge",
+                    ] = [
+                        name_ref
+                        for i in range(
+                            len(CDP_preprocessed[CDP_preprocessed.account_id == acc])
+                        )
                     ]
 
         df_merged = df_merged.rename(
-            columns={"CF1": "ref_CF1", "CF2": "ref_CF2", "CF3": "ref_CF3", "CF123": "ref_CF123"}
+            columns={
+                "CF1": "ref_CF1",
+                "CF2": "ref_CF2",
+                "CF3": "ref_CF3",
+                "CF123": "ref_CF123",
+            }
         )
-        CDP_preprocessed = CDP_preprocessed.rename(columns={"accounting_year": "FiscalYear", "name_merge": "Name"})
+        CDP_preprocessed = CDP_preprocessed.rename(
+            columns={"accounting_year": "FiscalYear", "name_merge": "Name"}
+        )
         lst_columns_tomerge = [
             "FiscalYear",
             "CDP_CF1",
@@ -266,7 +346,9 @@ def merge_datasets(
             "covered_countries",
             "Name",
         ]
-        df_merged = df_merged.merge(CDP_preprocessed[lst_columns_tomerge], how="left", on=["Name", "FiscalYear"])
+        df_merged = df_merged.merge(
+            CDP_preprocessed[lst_columns_tomerge], how="left", on=["Name", "FiscalYear"]
+        )
 
     return df_merged
 
@@ -319,7 +401,9 @@ def initial_preprocessing(df):
 
     medians_per_years = df.groupby("FiscalYear")["FuelIntensity"].median()
     for year in range(df.FiscalYear.min(), df.FiscalYear.max() + 1):
-        df.loc[(df.FiscalYear == year) & (df.FuelIntensity.isna()), "FuelIntensity"] = medians_per_years[year]
+        df.loc[
+            (df.FiscalYear == year) & (df.FuelIntensity.isna()), "FuelIntensity"
+        ] = medians_per_years[year]
 
     df.loc[df[df.CountryHQ == "Guernsey"].index, "IncomeGroup"] = "H"
     df.loc[df[df.CountryHQ == "Jersey"].index, "IncomeGroup"] = "H"
@@ -329,8 +413,20 @@ def initial_preprocessing(df):
     df["CF3_merge"] = df["CDP_CF3"].fillna(df["ref_CF3"])
     df["CF123_merge"] = df["CDP_CF123"].fillna(df["ref_CF123"])
 
-    df.loc[df[(df.CF1_merge.isna()) | (df.CF2_merge.isna()) | (df.CF3_merge.isna())].index, "CF123_merge"] = [
-        np.nan for i in range(len(df[(df.CF1_merge.isna()) | (df.CF2_merge.isna()) | (df.CF3_merge.isna())]))
+    df.loc[
+        df[(df.CF1_merge.isna()) | (df.CF2_merge.isna()) | (df.CF3_merge.isna())].index,
+        "CF123_merge",
+    ] = [
+        np.nan
+        for i in range(
+            len(
+                df[
+                    (df.CF1_merge.isna())
+                    | (df.CF2_merge.isna())
+                    | (df.CF3_merge.isna())
+                ]
+            )
+        )
     ]
 
     df.loc[df[df.CF1_merge == 0].index, "CF1_merge"] = [
@@ -339,15 +435,45 @@ def initial_preprocessing(df):
     return df
 
 
-def create_preprocessed_dataset(Refinitiv_data, CarbonPricing, IncomeGroup, FuelIntensity, CDP):
+def create_preprocessed_dataset(
+    Refinitiv_data, CarbonPricing, IncomeGroup, FuelIntensity, CDP
+):
     """
-    Create the merged dataset and preprocess it with target independant steps.
+    Creates a merged dataset from multiple data sources and performs preprocessing steps on it.
+
+    This function integrates data from the following sources:
+    - 'Refinitiv_data': The primary dataset containing financial and economic information.
+    - 'CarbonPricing': Carbon pricing data after preprocessing.
+    - 'IncomeGroup': Income group data after preprocessing.
+    - 'FuelIntensity': Data related to fuel intensity.
+    - 'CDP': CDP dataset after preprocessing.
+
+    The function applies the following steps:
+    1. Transforms and preprocesses 'CarbonPricing' data.
+    2. Transforms and preprocesses 'IncomeGroup' data.
+    3. Preprocesses 'CDP' data.
+    4. Merges all datasets into 'df_merged'.
+    5. Performs initial preprocessing on 'df_merged' using 'initial_preprocessing'.
+
+    Parameters:
+    - Refinitiv_data (DataFrame): The primary dataset containing financial and economic information.
+    - CarbonPricing (DataFrame): Carbon pricing data.
+    - IncomeGroup (DataFrame): Income group data.
+    - FuelIntensity (DataFrame): Data related to fuel intensity.
+    - CDP (DataFrame): CDP dataset.
+
+    Returns:
+    - preprocessed_dataset (DataFrame): The preprocessed and merged dataset.
     """
     CarbonPricing_Transposed = CarbonPricing_preprocess(CarbonPricing)
     IncomeGroup_Transposed = IncomeGroup_preprocess(IncomeGroup)
     CDP_preprocessed = CDP_preprocess(CDP)
     df_merged = merge_datasets(
-        Refinitiv_data, CarbonPricing_Transposed, IncomeGroup_Transposed, FuelIntensity, CDP_preprocessed
+        Refinitiv_data,
+        CarbonPricing_Transposed,
+        IncomeGroup_Transposed,
+        FuelIntensity,
+        CDP_preprocessed,
     )
 
     preprocessed_dataset = initial_preprocessing(df_merged)

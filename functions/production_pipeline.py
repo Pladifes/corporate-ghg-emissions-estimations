@@ -13,9 +13,37 @@ pd.options.mode.chained_assignment = None
 
 def production_pipeline(restricted_features):
     """
-    Applies the full pipeline to train and save models.
-    Models can thus be remployed
+    Apply the full pipeline to train and save models, allowing for reuse of models.
+
+    Parameters:
+    - restricted_features (list): A list of features to be restricted or excluded during model training.
+
+    This function applies a comprehensive pipeline for training machine learning models and saving them for future use.
+    The pipeline includes data loading, preprocessing, outlier removal, model training, and output generation.
+
+    Parameters:
+    - restricted_features (list): A list of feature names to be restricted or excluded during model training.
+
+    The function uses the following directories and settings for its operation:
+    - path_rawdata: Directory containing raw data.
+    - path_models: Directory where trained models will be saved.
+    - path_Benchmark: Directory for benchmark data.
+    - path_results: Directory for storing results.
+    - path_plot: Directory for saving plot images.
+    - path_intermediary: Directory for intermediate data storage.
+
+    It trains models for the specified target variables and uses a dictionary of models, where the keys are model names
+    and the values are the corresponding model functions.
+
+    The 'training_parameters' dictionary includes various parameters for training, such as the random seed, the number of iterations,
+    and the list of extended features to use.
+
+    The function returns no explicit output but performs the entire pipeline, including loading the dataset, preprocessing,
+    removing outliers, training models, and generating results. The trained models and results are saved in the specified directories.
+
+    Note: This function is designed for a specific use case and may require additional context to understand its full functionality.
     """
+
     # Parameters definition
     path_rawdata = "data/raw_data/"
     path_models = "models/"
@@ -81,11 +109,19 @@ def production_pipeline(restricted_features):
     threshold_over = 2.5
     for target in ["CF1_merge", "CF2_merge", "CF3_merge", "CF123_merge"]:
         preprocessed_dataset = outliers_preprocess(
-            preprocessed_dataset, target, threshold_under=threshold_under, threshold_over=threshold_over
+            preprocessed_dataset,
+            target,
+            threshold_under=threshold_under,
+            threshold_over=threshold_over,
         )
 
     # Preprocessing, training and outputs generation
-    best_scores, best_stds, summary_global, summary_metrics_detailed = training_pipeline(
+    (
+        best_scores,
+        best_stds,
+        summary_global,
+        summary_metrics_detailed,
+    ) = training_pipeline(
         path_Benchmark=path_Benchmark,
         path_results=path_results,
         path_models=path_models,

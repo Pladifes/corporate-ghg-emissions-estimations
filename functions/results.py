@@ -16,6 +16,22 @@ from functions.plot_functions import plot, plot_detailed
 
 
 def GICS_to_name(GICSSector):
+    """
+    Convert GICS (Global Industry Classification Standard) sector code to sector name.
+
+    Parameters:
+    - GICSSector (float): The GICS sector code to be converted to a sector name.
+
+    Returns:
+    - str: The name of the sector corresponding to the given GICS sector code.
+
+    This function takes a GICS sector code as input and returns the corresponding sector name.
+    The GICS system is used to classify companies into different industry sectors.
+    If the input GICSSector matches one of the predefined sector codes (e.g., 10.0 for Energy),
+    the function returns the corresponding sector name. If the input does not match any predefined code,
+    it returns the input GICSSector as a string.
+
+    """
     if GICSSector == 10.0:
         return "Energy"
     elif GICSSector == 15.0:
@@ -42,7 +58,9 @@ def GICS_to_name(GICSSector):
         return GICSSector
 
 
-def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_features, path_plot):
+def summary_detailed(
+    X_test, y_test, y_pred, df_test, target, restricted_features, path_plot
+):
     """
     Generates a summary of the model performance by sector and region for a given target variable.
 
@@ -71,7 +89,9 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_feature
     deciles = pd.qcut(df_test["Revenue"], 10, labels=False)
     df_test_copy = df_test.copy()
     df_test_copy["Revenuebuckets"] = deciles
-    df_test_copy["Sectors"] = df_test_copy["GICSSector"].astype(float).apply(GICS_to_name)
+    df_test_copy["Sectors"] = (
+        df_test_copy["GICSSector"].astype(float).apply(GICS_to_name)
+    )
 
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred
@@ -104,10 +124,20 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_feature
         unique = list(X_test_copy[category].unique())
         for i, value in enumerate(unique):
             mask = X_test_copy[category] == value
-            rmse = np.sqrt(mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]))
-            mse = mean_squared_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
-            mae = mean_absolute_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
-            mape = mean_absolute_percentage_error(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
+            rmse = np.sqrt(
+                mean_squared_error(
+                    X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+                )
+            )
+            mse = mean_squared_error(
+                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+            )
+            mae = mean_absolute_error(
+                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+            )
+            mape = mean_absolute_percentage_error(
+                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+            )
             r2 = r2_score(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
             rmses = []
             l_test = len(X_test_copy[mask]["y_test"])
@@ -115,13 +145,23 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_feature
                 for k in range(n_split):
                     rmses.append(
                         mean_squared_error(
-                            X_test_copy[mask]["y_test"][int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
-                            X_test_copy[mask]["y_pred"][int(k * l_test / n_split) : int((k + 1) * l_test / n_split)],
+                            X_test_copy[mask]["y_test"][
+                                int(k * l_test / n_split) : int(
+                                    (k + 1) * l_test / n_split
+                                )
+                            ],
+                            X_test_copy[mask]["y_pred"][
+                                int(k * l_test / n_split) : int(
+                                    (k + 1) * l_test / n_split
+                                )
+                            ],
                             squared=False,
                         )
                     )
                 std = np.std(rmses)
-                rmses_df_temp = pd.DataFrame([[rmse, value] for rmse in rmses], columns=["rmses", category])
+                rmses_df_temp = pd.DataFrame(
+                    [[rmse, value] for rmse in rmses], columns=["rmses", category]
+                )
                 rmses_df = pd.concat([rmses_df, rmses_df_temp])
             else:
                 std = np.nan
@@ -141,11 +181,18 @@ def summary_detailed(X_test, y_test, y_pred, df_test, target, restricted_feature
                 index=[0],
             )
 
-            summary_region_sector = pd.concat([summary_region_sector, summary], ignore_index=True)
+            summary_region_sector = pd.concat(
+                [summary_region_sector, summary], ignore_index=True
+            )
 
         if category in ["ENEConsume", "ENEProduce"]:
             rmses_df = rmses_df.replace({True: "No values", False: "With values"})
-        sorted_categs = rmses_df.groupby(category).median().sort_values(by="rmses", ascending=False).index
+        sorted_categs = (
+            rmses_df.groupby(category)
+            .median()
+            .sort_values(by="rmses", ascending=False)
+            .index
+        )
         categ_type = pd.CategoricalDtype(categories=sorted_categs, ordered=True)
         rmses_df[category] = pd.Series(rmses_df[category], dtype=categ_type)
         rmses_df = rmses_df.sort_values(by=[category])
@@ -194,7 +241,9 @@ def scopes_report(
     final_dataset = set_columns(final_dataset, features)
 
     final_dataset_train = target_preprocessing(final_dataset, target)
-    final_model = best_model.fit(final_dataset_train[features], final_dataset_train[target])
+    final_model = best_model.fit(
+        final_dataset_train[features], final_dataset_train[target]
+    )
     final_y_pred = final_model.predict(final_dataset[features])
 
     with open(path_models + f"{target}_model.pkl", "wb") as f:
@@ -276,10 +325,41 @@ def best_model_analysis(
     restricted_features,
     path_models,
 ):
+    """
+    Analyze the performance of the best machine learning model and generate a detailed report.
+
+    Parameters:
+        best_model (object): The trained machine learning model that performed the best.
+        X_test (DataFrame): The feature matrix of the test dataset.
+        X_train (DataFrame): The feature matrix of the training dataset.
+        y_test (Series): The true target values of the test dataset.
+        df_test (DataFrame): The test dataset.
+        target (str): The name of the target variable.
+        path_plot (str): The path to save generated plots and visualizations.
+        dataset (str): The name or description of the dataset.
+        path_intermediary (str): The path for storing intermediate analysis results.
+        summary_metrics_detailed (DataFrame): A DataFrame containing summary metrics for multiple models.
+        estimated_scopes (DataFrame): A DataFrame containing estimated scopes for models.
+        restricted_features (list): List of restricted features used in modeling.
+        path_models (str): The path to save model files.
+
+    Returns:
+        summary_metrics_detailed (DataFrame): Updated summary metrics including the analysis of the best model.
+        estimated_scopes (DataFrame): Updated estimated scopes after analyzing the best model.
+        lst (list): List of additional analysis results or information.
+
+    This function evaluates the best machine learning model's performance on the test dataset,
+    generates relevant plots, computes detailed metrics, and updates the summary and scope information.
+
+    """
     y_pred_best = best_model.predict(X_test)
     plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
-    metrics_scope = summary_detailed(X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot)
-    summary_metrics_detailed = pd.concat([summary_metrics_detailed, metrics_scope], ignore_index=True)
+    metrics_scope = summary_detailed(
+        X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot
+    )
+    summary_metrics_detailed = pd.concat(
+        [summary_metrics_detailed, metrics_scope], ignore_index=True
+    )
 
     estimated_scopes, lst = scopes_report(
         dataset,
@@ -293,7 +373,9 @@ def best_model_analysis(
     return summary_metrics_detailed, estimated_scopes, lst
 
 
-def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst):
+def results(
+    estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst
+):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -315,7 +397,9 @@ def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Fi
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
     merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
-    summary_metrics_detailed.to_csv(path_results + "Summary_metrics_detail.csv", index=False)
+    summary_metrics_detailed.to_csv(
+        path_results + "Summary_metrics_detail.csv", index=False
+    )
     dict_recap = {}
     for key in ["Target", "model", "mae", "mse", "r2", "rmse", "mape", "std"]:
         dict_recap[key] = [Summary_Final[i][key] for i in range(len(Summary_Final))]
@@ -323,7 +407,9 @@ def results(estimated_scopes, path_results, summary_metrics_detailed, Summary_Fi
     df_Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
 
 
-def results_mlflow(estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment):
+def results_mlflow(
+    estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment
+):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -343,6 +429,12 @@ def results_mlflow(estimated_scopes, path_results, summary_metrics, Summary_Fina
     merged_df.sort_values(by=["FinalEikonID", "FiscalYear"]).reset_index(drop=True)
     profile = ProfileReport(merged_df, minimal=True)
     profile.to_file(path_results + "Scopes_summary.html")
-    merged_df.to_csv(path_results + f"{name_experiment}_Estimated_scopes.csv", index=False)
-    summary_metrics.to_csv(path_results + f"{name_experiment}_Summary_metrics_detail.csv", index=False)
-    Summary_Final.to_csv(path_results + f"{name_experiment}_Summary_metrics.csv", index=False)
+    merged_df.to_csv(
+        path_results + f"{name_experiment}_Estimated_scopes.csv", index=False
+    )
+    summary_metrics.to_csv(
+        path_results + f"{name_experiment}_Summary_metrics_detail.csv", index=False
+    )
+    Summary_Final.to_csv(
+        path_results + f"{name_experiment}_Summary_metrics.csv", index=False
+    )
