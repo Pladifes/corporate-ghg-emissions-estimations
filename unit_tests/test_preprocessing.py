@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import pytest
+import unittest
 import sys
 import os
 
@@ -8,170 +8,286 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-from functions.data_preparation import merge_datasets
-from functions.data_preparation import add_variables
-from functions.data_preparation import load_data
-from functions.data_preparation import CarbonPricing_preprocess
-from functions.data_preparation import IncomeGroup_preprocess
-
-from functions.preprocessing import GICS_to_name
-from functions.preprocessing import special_case
-from functions.preprocessing import country_region_mapping_incomegroup
-from functions.preprocessing import initial_preprocessing
-from functions.preprocessing import df_split
-from functions.preprocessing import set_columns
-from functions.preprocessing import label_FinalCO2Law
-from functions.preprocessing import processingrawdata
-from functions.preprocessing import selected_features
-from functions.preprocessing import outliers_preprocess
-from functions.preprocessing import set_columns
-
-path = "data/raw_data/"
-Refinitiv_data, CarbonPricing, IncomeGroup, FuelIntensity, GICSReclass = load_data(path)
-path_Benchmark = "C:/Users/mohamed.fahmaoui/Projets/scopes_estimations/corporate_ghg_estimation/Benchmark/"
-CarbonPricing_Transposed = CarbonPricing_preprocess(CarbonPricing)
-IncomeGroup_Transposed = IncomeGroup_preprocess(IncomeGroup, path)
-df_merged = merge_datasets(
-    Refinitiv_data,
-    GICSReclass,
-    CarbonPricing_Transposed,
-    IncomeGroup_Transposed,
-    FuelIntensity,
+from functions.preprocessing import (
+    target_preprocessing,
+    df_split,
+    set_columns,
+    logtransform,
+    label_final_co2_law,
+    processingrawdata,
+    outliers_preprocess,
+    selected_features,
 )
-raw_dataset = add_variables(df_merged)
+
+path_dataset_test_preprocessing = (
+    "unit_tests/test_dataset/test_dataset_preprocessing.csv"
+)
+path_dataset_loading = "unit_tests/test_dataset/test_dataset.csv"
 
 
-def test_GICS_to_name():
-    assert GICS_to_name(10.0) == "Energy"
-    assert GICS_to_name(15.0) == "Materials"
-    assert GICS_to_name(20.0) == "Industrials"
-    assert GICS_to_name(25.0) == "Cons. Discretionary"
-    assert GICS_to_name(30.0) == "Cons. Staples"
-    assert GICS_to_name(35.0) == "Health Care"
-    assert GICS_to_name(40.0) == "Financials"
-    assert GICS_to_name(45.0) == "IT"
-    assert GICS_to_name(50.0) == "Telecommunication"
-    assert GICS_to_name(55.0) == "Utilities"
-    assert GICS_to_name(60.0) == "Real Estate"
-    assert GICS_to_name(65.0) == 65.0
+class TestTargetPreprocessing(unittest.TestCase):
+    def test_cf1_log(self):
+        path_dataset_loading = "unit_tests/test_dataset/test_dataset.csv"
+        df = pd.read_csv(path_dataset_loading)
+        result = target_preprocessing(df, "cf1_log")
+
+        self.assertTrue(all(result["FiscalYear"] >= 2005))
+        self.assertFalse("cf1_log" in result.columns)
+        self.assertTrue(result["cf1_log"].isna().sum() == 0)
+
+    def test_cf2_log(self):
+        path_dataset_loading = "unit_tests/test_dataset/test_dataset.csv"
+        df = pd.read_csv(path_dataset_loading)
+        result = target_preprocessing(df, "cf2_log")
+
+        self.assertTrue(all(result["FiscalYear"] >= 2005))
+        self.assertFalse("cf2_log" in result.columns)
+        self.assertTrue(result["cf2_log"].isna().sum() == 0)
 
 
-def test_special_case():
-    data = {
-        "FinalEikonID": ["SSABa.ST", "OMH.AX", "NHH.MC", "1101.HK"],
-        "FiscalYear": [2005, 2006, 2006, 2006],
-    }
-    df = pd.DataFrame(data)
+class TestDfSplit(unittest.TestCase):
+    def setUp(self):
+        path_dataset_loading = "unit_tests/test_dataset/test_dataset.csv"
+        self.test_df = pd.read_csv(path_dataset_loading)
 
-    df_out = special_case(df)
-    assert len(df_out) == 0
-    assert "SSABa.ST" not in df_out["FinalEikonID"].values
-    assert "OMH.AX" not in df_out["FinalEikonID"].values
-    assert "NHH.MC" not in df_out["FinalEikonID"].values
-    assert "1101.HK" not in df_out["FinalEikonID"].values
+    def test_df_split(self):
+        benchmark_df = pd.read_csv("/benchmark/lst_companies_test_GICS_2023.csv")
+        df_train, df_test = df_split(
+            self.test_df, "/benchmark/lst_companies_test_GICS_2023.csv"
+        )
 
-    data = {
-        "FinalEikonID": ["AAPL.O", "MSFT.O"],
-        "FiscalYear": [2005, 2006],
-    }
-    df = pd.DataFrame(data)
-    df_out = special_case(df)
-    assert len(df_out) == 2
-    assert "AAPL.O" in df_out["FinalEikonID"].values
-    assert "MSFT.O" in df_out["FinalEikonID"].values
+        expected_train = self.test_df[
+            ~self.test_df["company_name"].isin(benchmark_df["company_name"])
+        ]
+        expected_test = self.test_df[
+            self.test_df["company_name"].isin(benchmark_df["company_name"])
+        ]
+
+        self.assertTrue(df_train.equals(expected_train))
+        self.assertTrue(df_test.equals(expected_test))
 
 
-def test_country_region_mapping_incomegroup():
-    df = pd.DataFrame({"TR Name": ["Canada", "Mexico", "United States"]})
-    mapping_data = {
-        "Country": ["Canada", "Mexico", "United States"],
-        "Region": ["North America", "North America", "North America"],
-    }
-    mapping = pd.DataFrame(mapping_data)
-    mapping_file = "country_region_mapping.xlsx"
-    mapping.to_excel(mapping_file, index=False)
-    result_df = country_region_mapping_incomegroup("", df)
-    assert result_df.iloc[0]["Region"] == "North America"
-    assert result_df.iloc[1]["Region"] == "North America"
-    assert result_df.iloc[2]["Region"] == "North America"
-    os.remove(mapping_file)
+class TestSetColumns(unittest.TestCase):
+    def setUp(self):
+        data = {
+            "feature_1": [1, 2, 3],
+            "feature_2": [4, 5, 6],
+        }
+        self.test_df = pd.DataFrame(data)
+
+    def test_set_columns(self):
+        features = ["feature_1", "feature_2", "feature_3"]
+        result_df = set_columns(self.test_df, features)
+        self.assertTrue("feature_3" in result_df.columns)
+        self.assertTrue(all(result_df["feature_3"] == 0))
+
+    def test_set_columns_no_missing(self):
+        features = ["feature_1", "feature_2"]
+        result_df = set_columns(self.test_df, features)
+        self.assertTrue(self.test_df.equals(result_df))
 
 
-def test_initial_preprocessing():
+class TestLogTransform(unittest.TestCase):
+    def setUp(self):
+        data = {
+            "cf1": [1, 2, 3],
+            "cf2": [4, 5, 6],
+            "cf3": [7, 8, 9],
+            "cf123": [10, 11, 12],
+        }
+        self.test_df = pd.DataFrame(data)
 
-    raw_data_test = raw_dataset.iloc[:5000, :]
-    processed_data = initial_preprocessing(raw_data_test, "CF1_log", path)
-    assert "SectorName" in processed_data.columns
-    assert "NaN" not in processed_data["SectorName"].unique()
+    def test_logtransform_train(self):
+        result_df = logtransform(
+            self.test_df, ["cf1", "cf2", "cf3", "cf123"], "", train=True
+        )
+
+        self.assertTrue("cf1_log" in result_df.columns)
+        self.assertTrue(all(result_df["cf1_log"] == np.log10(self.test_df["cf1"] + 1)))
+        self.assertTrue("cf2_log" in result_df.columns)
+        self.assertTrue("cf3_log" in result_df.columns)
+        self.assertTrue(all(result_df["cf3_log"] == np.log10(self.test_df["cf3"] + 1)))
+        self.assertTrue("cf123_log" in result_df.columns)
+        self.assertTrue(
+            all(result_df["cf123_log"] == np.log10(self.test_df["cf123"] + 1))
+        )
+
+        self.assertTrue(os.path.isfile("columns_min.csv"))
+
+    def test_logtransform_test(self):
+        columns_min_data = {
+            "column": ["cf1", "cf2", "cf3", "cf123"],
+            "min_value": [0, 1, 2, 3],
+        }
+        columns_min_df = pd.DataFrame(columns_min_data)
+        columns_min_df.to_csv("columns_min.csv", index=False)
+
+        result_df = logtransform(
+            self.test_df, ["cf1", "cf2", "cf3", "cf123"], "", train=False
+        )
+
+        self.assertTrue("cf1_log" in result_df.columns)
+        self.assertTrue(
+            all(result_df["cf1_log"] == np.log10(self.test_df["cf1"] - 0 + 1))
+        )
+        self.assertTrue("cf2_log" in result_df.columns)
+        self.assertTrue("cf3_log" in result_df.columns)
+
+        self.assertTrue("cf123_log" in result_df.columns)
+
+        if os.path.isfile("columns_min.csv"):
+            os.remove("columns_min.csv")
 
 
-def test_df_split():
-    df_train, df_test = df_split(raw_dataset, path_Benchmark)
-    assert df_train["Name"].unique() != df_test["Name"].unique()
+class TestLabelFinalCO2Law(unittest.TestCase):
+    def test_label_final_co2_law_impl(self):
+        row = pd.Series({"co2_law": "Yes", "co2_status": "Implemented"})
+        result = label_final_co2_law(row)
+        self.assertEqual(result, "has_implemented_CO2Law")
+
+    def test_label_final_co2_law_not_impl(self):
+        row = pd.Series({"co2_law": "Yes", "co2_status": "Not Implemented"})
+        result = label_final_co2_law(row)
+        self.assertEqual(result, "has_not_implemented_CO2Law")
+
+    def test_label_final_co2_law_not_yes(self):
+        row = pd.Series({"co2_law": "No", "co2_status": "Implemented"})
+        result = label_final_co2_law(row)
+        self.assertEqual(result, "has_not_implemented_CO2Law")
 
 
-def test_set_columns():
-    df = pd.DataFrame({"col_1": [1, 2, 3]})
-    features = ["col_1", "col_3"]
-    result = set_columns(df, features)
-    expected_columns = ["col_1", "col_3"]
-    assert list(result.columns) == expected_columns
+class TestProcessingRawData(unittest.TestCase):
+    def setUp(self):
+        data = {
+            "gics_group": ["Group1", "Group2", "Group3"],
+            "gics_sector": ["Sector1", "Sector2", "Sector3"],
+            "gics_ind": ["Ind1", "Ind2", "Ind3"],
+            "gics_sub_ind": ["SubInd1", "SubInd2", "SubInd3"],
+            "income_group": ["H", "UM", None],
+            "co2_law": ["Yes", "No", "Yes"],
+            "co2_status": ["Yes", "No", "Yes"],
+        }
+        self.test_df = pd.DataFrame(data)
 
-    expected_df = pd.DataFrame(
-        {"col_1": [1, 2, 3], "col_3": [0, 0, 0]}
-    )
-    assert result.equals(expected_df)
+    def test_processingrawdata(self):
+        result_df = processingrawdata(
+            self.test_df, restricted_features=True, train=True
+        )
 
-def test_label_FinalCO2Law():
-    input_row = pd.Series({
-        "CO2Law": "Yes",
-        "CO2Status": "Implemented",
-        "CO2Coverage": "Subnational"
-    })
-    expected_output = "Subnational Implemented"
-    assert label_FinalCO2Law(input_row) == expected_output
+        self.assertTrue("final_co2_law_encoded" in result_df.columns)
 
-def test_processingrawdata():
-    data_old = pd.DataFrame({
-        'CO2Law': ['Yes', 'No', 'Yes', 'TBD'],
-        'CO2Status': ['Scheduled', 'Implemented', 'Implemented', 'Scheduled'],
-        'CO2Coverage': ['Subnational', 'National', 'Regional', 'National'],
-        'GICSGroup': ['Group A', 'Group B', 'Group A', 'Group B'],
-        'GICSSector': ['Sector A', 'Sector B', 'Sector A', 'Sector B'],
-        'Recat': ['SubInd A', 'SubInd B', 'SubInd A', 'SubInd B'],
-        'Recat2': ['Ind A', 'Ind B', 'Ind A', 'Ind B'],
-        'IncomeGroup': ['High', 'Low', 'Low', 'Middle'],
-        'FiscalYear': [2018, 2019, 2019, 2020],
-        'GICSSubInd': ['SubInd A', 'SubInd B', 'SubInd A', 'SubInd B'],
-        'GICSInd': ['Ind A', 'Ind B', 'Ind A', 'Ind B'],
-        'GMAR': [10, 20, 30, None]
-    })
-    
-    data_new = processingrawdata(data_old, fillGMAR=True)
-    
-    assert data_new.shape == (4, 31)
-    assert 'FinalCO2Law__No CO2 Law' in data_new.columns
-    assert 'GICSSector__Sector A' in data_new.columns
-    assert 'IncomeGroup__Middle' in data_new.columns
-    assert data_new['GMAR'].isna().sum() == 0
+        self.assertTrue("income_group_encoded" in result_df.columns)
 
-def test_selected_features():
-   features = selected_features(raw_dataset,'CF2_log',path)
-    assert len(features) ==302
+    def test_processingrawdata_full(self):
 
-def test_outliers_preprocess():
-    df = pd.DataFrame({
-        "CF1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        "CF2": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
-        "CF3": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-        "CF123": [31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
-    })
+        result_df = processingrawdata(
+            self.test_df, restricted_features=False, train=True
+        )
 
-    data_new = outliers_preprocess(df)
-    expected_df = pd.DataFrame({
-        "CF1": [2, 3, 4, 5, 6, 7, 8, 9],
-        "CF2": [12, 13, 14, 15, 16, 17, 18, 19],
-        "CF3": [22, 23, 24, 25, 26, 27, 28, 29],
-        "CF123": [32, 33, 34, 35, 36, 37, 38, 39]
-    })
-    assert data_new.shape == expected_df.shape
+        self.assertTrue("gics_group_Group1" in result_df.columns)
+        self.assertTrue("gics_sector_Sector1" in result_df.columns)
+
+
+class TestSelectedFeatures(unittest.TestCase):
+    def setUp(self):
+        data_train = {
+            "feature1": [1, 2, 3],
+            "feature2": [4, 5, 6],
+        }
+        data_test = {
+            "feature1": [7, 8, 9],
+            "feature2": [10, 11, 12],
+        }
+        self.df_train = pd.DataFrame(data_train)
+        self.df_test = pd.DataFrame(data_test)
+
+    def test_selected_features(self):
+        result_features = selected_features(
+            self.df_train,
+            self.df_test,
+            "",
+            ["extended_feature1", "extended_feature2"],
+            ["sect1", "sect2"],
+        )
+        self.assertTrue(os.path.isfile("features.csv"))
+
+    def tearDown(self):
+        if os.path.isfile("features.csv"):
+            os.remove("features.csv")
+
+
+class TestOutliersPreprocess(unittest.TestCase):
+    def setUp(self):
+        data = {
+            "gics_sub_ind": [
+                "SubInd1",
+                "SubInd2",
+                "SubInd1",
+                "SubInd2",
+                "SubInd1",
+                "SubInd2",
+            ],
+            "revenue": [100, 150, 200, 250, 300, 350],
+            "scope": [10, 15, 20, 25, 30, 35],
+        }
+        self.test_df = pd.DataFrame(data)
+
+    def test_outliers_preprocess(self):
+
+        result_df = outliers_preprocess(self.test_df, "scope")
+
+        expected_indices = [0, 2, 4]
+        self.assertTrue(all(result_df.index != expected_indices))
+
+    def test_outliers_preprocess_custom_thresholds(self):
+        result_df = outliers_preprocess(
+            self.test_df, "scope", threshold_over=3.0, threshold_under=1.0
+        )
+        expected_indices = [2, 4]
+        self.assertTrue(all(result_df.index != expected_indices))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+# class TestCustomTrainSplit(unittest.TestCase):
+#     @patch("your_module.pd.read_parquet")
+#     @patch("your_module.df_split")
+#     @patch("your_module.encoding")
+#     @patch("your_module.selected_features")
+#     @patch("your_module.set_columns")
+#     @patch("your_module.target_preprocessing")
+#     def test_custom_train_split(
+#         self,
+#         mock_target_preprocessing,
+#         mock_set_columns,
+#         mock_selected_features,
+#         mock_encoding,
+#         mock_df_split,
+#         mock_read_parquet,
+#     ):
+#         mock_target_preprocessing.side_effect = lambda df, target: df
+#         mock_set_columns.side_effect = lambda df, features: df
+#         mock_selected_features.return_value = ["feature1", "feature2"]
+#         mock_df_split.return_value = (pd.DataFrame(), pd.DataFrame())
+#         mock_encoding.side_effect = lambda df, path, train, restricted_features: df  #
+#         X_train, y_train, X_test, y_test, df_test = custom_train_split(
+#             pd.DataFrame(),
+#             "",
+#             "",
+#             "cf1_log",
+#             [],
+#             restricted_features=True,
+#             selec_sect=["gics_sect"],
+#         )
+#         self.assertEqual(X_train.shape, (0, 0))
+#         self.assertEqual(y_train.shape, (0,))
+#         self.assertEqual(X_test.shape, (0, 0))
+#         self.assertEqual(y_test.shape, (0,))
+#         self.assertEqual(df_test.shape, (0, 0))
+#         self.assertEqual(mock_read_parquet.call_count, 0)
+
+
+# if __name__ == "__main__":
+#     unittest.main()

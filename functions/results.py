@@ -15,47 +15,31 @@ from functions.preprocessing import target_preprocessing
 from functions.plot_functions import plot, plot_detailed
 
 
-def GICS_to_name(GICSSector):
-    """
-    Convert GICS (Global Industry Classification Standard) sector code to sector name.
-
-    Parameters:
-    - GICSSector (float): The GICS sector code to be converted to a sector name.
-
-    Returns:
-    - str: The name of the sector corresponding to the given GICS sector code.
-
-    This function takes a GICS sector code as input and returns the corresponding sector name.
-    The GICS system is used to classify companies into different industry sectors.
-    If the input GICSSector matches one of the predefined sector codes (e.g., 10.0 for Energy),
-    the function returns the corresponding sector name. If the input does not match any predefined code,
-    it returns the input GICSSector as a string.
-
-    """
-    if GICSSector == 10.0:
+def gics_to_name(gics_sector):
+    if gics_sector == 10.0:
         return "Energy"
-    elif GICSSector == 15.0:
+    elif gics_sector == 15.0:
         return "Materials"
-    elif GICSSector == 20.0:
+    elif gics_sector == 20.0:
         return "Industrials"
-    elif GICSSector == 25.0:
+    elif gics_sector == 25.0:
         return "Cons. Discretionary"
-    elif GICSSector == 30.0:
+    elif gics_sector == 30.0:
         return "Cons. Staples"
-    elif GICSSector == 35.0:
+    elif gics_sector == 35.0:
         return "Health Care"
-    elif GICSSector == 40.0:
+    elif gics_sector == 40.0:
         return "Financials"
-    elif GICSSector == 45.0:
+    elif gics_sector == 45.0:
         return "IT"
-    elif GICSSector == 50.0:
+    elif gics_sector == 50.0:
         return "Telecommunication"
-    elif GICSSector == 55.0:
+    elif gics_sector == 55.0:
         return "Utilities"
-    elif GICSSector == 60.0:
+    elif gics_sector == 60.0:
         return "Real Estate"
     else:
-        return GICSSector
+        return gics_sector
 
 
 def summary_detailed(
@@ -86,38 +70,36 @@ def summary_detailed(
     """
     n_split = 10
     summary_region_sector = pd.DataFrame()
-    deciles = pd.qcut(df_test["Revenue"], 10, labels=False)
+    deciles = pd.qcut(df_test["revenue"], 10, labels=False)
     df_test_copy = df_test.copy()
-    df_test_copy["Revenuebuckets"] = deciles
-    df_test_copy["Sectors"] = (
-        df_test_copy["GICSSector"].astype(float).apply(GICS_to_name)
-    )
+    df_test_copy["revenue_buckets"] = deciles
 
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred
     X_test_copy["y_test"] = y_test
-    X_test_copy["SubSector"] = df_test_copy.GICSName.values
-    X_test_copy["Revenuebucket"] = df_test_copy.Revenuebuckets.values
-    X_test_copy["Region"] = df_test_copy.Region.values
-    X_test_copy["Country"] = df_test_copy.CountryHQ.values
-    X_test_copy["Year"] = df_test_copy.FiscalYear.values
+    X_test_copy["sub_sector"] = df_test_copy.gics_name.values
+    X_test_copy["revenue_bucket"] = df_test_copy.revenue_buckets.values
+    X_test_copy["region"] = df_test_copy.region.values
+    X_test_copy["country"] = df_test_copy.country_hq.values
+    X_test_copy["year"] = df_test_copy.fiscal_year.values
 
     if not restricted_features:
-        X_test_copy["ENEConsume"] = df_test_copy.ENEConsume_y.isna().values
-        X_test_copy["ENEProduce"] = df_test_copy.ENEProduce_y.isna().values
-        X_test_copy["Industry"] = df_test_copy.Sectors.values
+        df_test_copy["sectors"] = df_test_copy["gics_sector"].astype(float).apply(gics_to_name)
+        X_test_copy["energy_consumed"] = df_test_copy.energy_consumed_y.isna().values
+        X_test_copy["energy_produced"] = df_test_copy.energy_produced_y.isna().values
+        X_test_copy["industry"] = df_test_copy.sectors.values
         categories = [
-            "Revenuebucket",
-            "Region",
-            "Country",
-            "Industry",
-            "SubSector",
-            "Year",
-            "ENEConsume",
-            "ENEProduce",
+            "revenue_bucket",
+            "region",
+            "country",
+            "industry",
+            "sub_sector",
+            "year",
+            "energy_consumed",
+            "energy_produced",
         ]
     else:
-        categories = ["Revenuebucket", "Region", "Country", "SubSector", "Year"]
+        categories = ["revenue_bucket", "region", "country", "sub_sector", "year"]
 
     for category in categories:
         rmses_df = pd.DataFrame([], columns=["rmses", category])
@@ -185,7 +167,7 @@ def summary_detailed(
                 [summary_region_sector, summary], ignore_index=True
             )
 
-        if category in ["ENEConsume", "ENEProduce"]:
+        if category in ["energy_consumed", "energy_produced"]:
             rmses_df = rmses_df.replace({True: "No values", False: "With values"})
         sorted_categs = (
             rmses_df.groupby(category)
@@ -228,8 +210,8 @@ def scopes_report(
     features = pd.read_csv(path_intermediary + "features.csv")
     features = features["features"].to_list()
     lst = [
-        "FinalEikonID",
-        "FiscalYear",
+        "company_id",
+        "fiscal_year",
     ]
 
     final_dataset = encoding(
@@ -255,7 +237,7 @@ def scopes_report(
     return estimated_scopes, lst
 
 
-def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=10):
+def metrics(y_test, y_pred, summary_final, target, model_name, n_split=10):
     """
     This function computes several evaluation metrics for a machine learning model's performance on a given dataset:
 
@@ -269,7 +251,7 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=10):
 
     y_test: The ground truth labels for the test dataset.
     y_pred: The predicted labels for the test dataset.
-    Summary_Final: A list to store the summary of evaluation metrics for all models and targets.
+    summary_final: A list to store the summary of evaluation metrics for all models and targets.
     target: The name of the target variable.
     model_name: The name of the machine learning model.
     Returns:
@@ -294,7 +276,7 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=10):
             )
         )
     std = np.std(rmses)
-    Summary_Final.append(
+    summary_final.append(
         {
             "Target": target,
             "model": model_name,
@@ -306,7 +288,7 @@ def metrics(y_test, y_pred, Summary_Final, target, model_name, n_split=10):
             "std": std,
         }
     )
-    summary_global = pd.DataFrame(Summary_Final)
+    summary_global = pd.DataFrame(summary_final)
     return summary_global, rmse, std
 
 
@@ -373,9 +355,7 @@ def best_model_analysis(
     return summary_metrics_detailed, estimated_scopes, lst
 
 
-def results(
-    estimated_scopes, path_results, summary_metrics_detailed, Summary_Final, lst
-):
+def results(estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -383,58 +363,24 @@ def results(
     estimated_scopes (list): List of DataFrames containing the estimated scopes.
     path_results (str): Path where the output files will be saved.
     summary_metrics (DataFrame): DataFrame containing detailed summary metrics.
-    Summary_Final (DataFrame): DataFrame containing summary metrics.
+    summary_final (DataFrame): DataFrame containing summary metrics.
     lst (list): List of column names to merge DataFrames on.
 
     Returns:
     None: This function doesn't return any values, it only saves files to the specified path.
     """
-    merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[3], on=lst, how="outer")
-    merged_df = merged_df.sort_values(by=["FinalEikonID", "FiscalYear"])
-    merged_df = merged_df.reset_index(drop=True)
-    profile = ProfileReport(merged_df, minimal=True)
-    profile.to_file(path_results + "Scopes_summary.html")
-    merged_df.to_csv(path_results + "Estimated_scopes.csv", index=False)
-    summary_metrics_detailed.to_csv(
-        path_results + "Summary_metrics_detail.csv", index=False
-    )
+    nb_targets = len(estimated_scopes)
+    merged_estimated_scopes = estimated_scopes[0]
+    for k in range(1, nb_targets):
+        merged_estimated_scopes = pd.merge(merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer")
+    merged_estimated_scopes = merged_estimated_scopes.sort_values(by=["company_id", "fiscal_year"])
+    merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
+    profile = ProfileReport(merged_estimated_scopes, minimal=True)
+    profile.to_file(path_results + "scopes_summary.html")
+    merged_estimated_scopes.to_csv(path_results + "estimated_scopes.csv", index=False)
+    summary_metrics_detailed.to_csv(path_results + "summary_metrics_detail.csv", index=False)
     dict_recap = {}
     for key in ["Target", "model", "mae", "mse", "r2", "rmse", "mape", "std"]:
-        dict_recap[key] = [Summary_Final[i][key] for i in range(len(Summary_Final))]
-    df_Summary_Final = pd.DataFrame.from_dict(dict_recap)
-    df_Summary_Final.to_csv(path_results + "Summary_metrics.csv", index=False)
-
-
-def results_mlflow(
-    estimated_scopes, path_results, summary_metrics, Summary_Final, lst, name_experiment
-):
-    """
-    Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
-
-    Parameters:
-    estimated_scopes (list): List of DataFrames containing the estimated scopes.
-    path_results (str): Path where the output files will be saved.
-    summary_metrics (DataFrame): DataFrame containing detailed summary metrics.
-    Summary_Final (DataFrame): DataFrame containing summary metrics.
-    lst (list): List of column names to merge DataFrames on.
-
-    Returns:
-    None: This function doesn't return any values, it only saves files to the specified path.
-    """
-    merged_df = pd.merge(estimated_scopes[0], estimated_scopes[1], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[2], on=lst, how="outer")
-    merged_df = pd.merge(merged_df, estimated_scopes[-1], on=lst, how="outer")
-    merged_df.sort_values(by=["FinalEikonID", "FiscalYear"]).reset_index(drop=True)
-    profile = ProfileReport(merged_df, minimal=True)
-    profile.to_file(path_results + "Scopes_summary.html")
-    merged_df.to_csv(
-        path_results + f"{name_experiment}_Estimated_scopes.csv", index=False
-    )
-    summary_metrics.to_csv(
-        path_results + f"{name_experiment}_Summary_metrics_detail.csv", index=False
-    )
-    Summary_Final.to_csv(
-        path_results + f"{name_experiment}_Summary_metrics.csv", index=False
-    )
+        dict_recap[key] = [summary_final[i][key] for i in range(len(summary_final))]
+    df_summary_final = pd.DataFrame.from_dict(dict_recap)
+    df_summary_final.to_csv(path_results + "summary_metrics.csv", index=False)

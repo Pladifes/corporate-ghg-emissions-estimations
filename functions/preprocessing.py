@@ -19,28 +19,28 @@ def target_preprocessing(df, target):
     Returns:
     pandas.DataFrame: A preprocessed DataFrame.
     """
-    if target == "CF1_log":
-        df = df[df["FiscalYear"] >= 2005]
-        df = df.dropna(subset=["CF1_log"])
-    elif target == "CF2_log":
-        df = df[df["FiscalYear"] >= 2005]
-        df = df.dropna(subset=["CF2_log"])
-    elif target == "CF3_log":
-        df = df[df["FiscalYear"] >= 2011]
-        df = df.dropna(subset=["CF3_log"])
+    if target == "cf1_log":
+        df = df[df["fiscal_year"] >= 2005]
+        df = df.dropna(subset=["cf1_log"])
+    elif target == "cf2_log":
+        df = df[df["fiscal_year"] >= 2005]
+        df = df.dropna(subset=["cf2_log"])
+    elif target == "cf3_log":
+        df = df[df["fiscal_year"] >= 2011]
+        df = df.dropna(subset=["cf3_log"])
     elif (
-        (target == "CF123_log")
-        or (target == "CF1_log_CF123")
-        or (target == "CF2_log_CF123")
-        or (target == "CF3_log_CF123")
+        (target == "cf123_log")
+        or (target == "cf1_log_cf123")
+        or (target == "cf2_log_cf123")
+        or (target == "cf3_log_cf123")
     ):
-        df = df[df["FiscalYear"] >= 2011]
-        df = df.dropna(subset=["CF123_log"])
+        df = df[df["fiscal_year"] >= 2011]
+        df = df.dropna(subset=["cf123_log"])
 
     return df
 
 
-def df_split(df, path_Benchmark):
+def df_split(df, path_benchmark):
     """
     This function takes a pandas DataFrame and splits it into two parts based on whether the "Name" column of each row is in a benchmark list of company names.
 
@@ -51,9 +51,9 @@ def df_split(df, path_Benchmark):
         - tuple of pandas DataFrames: A tuple containing two DataFrames. The first DataFrame contains rows from the input DataFrame that do not have a "Name" value in the benchmark list, and the second DataFrame contains rows from the input DataFrame that do have a "Name" value in the benchmark list.
     """
 
-    benchmark = pd.read_csv(path_Benchmark + "lst_companies_test_GICS_2023.csv")
-    benchmark_lst = benchmark["Name"].tolist()
-    mask = df["Name"].isin(benchmark_lst)
+    benchmark = pd.read_csv(path_benchmark + "lst_companies_test_gics_2023.csv")
+    benchmark_lst = benchmark["company_name"].tolist()
+    mask = df["company_name"].isin(benchmark_lst)
     df_test = df[mask]
     df_train = df[~mask]
     return df_train, df_test
@@ -98,7 +98,7 @@ def logtransform(df, ls, path_results, train):
 
     if train:
         for l in ls:
-            if l in ["CF1", "CF3", "CF2", "CF123"]:
+            if l in ["cf1", "cf3", "cf2", "cf123"]:
                 res[l + "_log"] = np.log10(res[l] + 1)
             else:
                 res[l + "_log"] = np.log10(res[l] - res[l].min() + 1)
@@ -114,7 +114,7 @@ def logtransform(df, ls, path_results, train):
     else:
         columns_min = pd.read_csv(path_results + f"columns_min.csv")
         for l in ls:
-            if l in ["CF1", "CF3", "CF2", "CF123"]:
+            if l in ["cf1", "cf3", "cf2", "cf123"]:
                 res[l + "_log"] = np.log10(res[l] + 1)
             else:
                 min_l = columns_min.loc[columns_min["column"] == l, "min_value"].item()
@@ -130,7 +130,7 @@ def logtransform(df, ls, path_results, train):
     return res
 
 
-def label_FinalCO2Law(row):
+def label_final_co2_law(row):
     """
     This function applies a label to a row in a pandas DataFrame based on the values in the "CO2Law", "CO2Status", and "CO2Coverage" columns.
 
@@ -141,7 +141,7 @@ def label_FinalCO2Law(row):
     str: The label for the row.
 
     """
-    if row["CO2Law"] == "Yes" and row["CO2Status"] == "Implemented":
+    if row["co2_law"] == "Yes" and row["co2_status"] == "Implemented":
         return "has_implemented_CO2Law"
     else:
         return "has_not_implemented_CO2Law"
@@ -159,47 +159,34 @@ def processingrawdata(data_old, restricted_features, train):
     - data_new (pandas DataFrame): the processed data, with new columns generated for ordinal encoded variables.
     """
     data_new = data_old.copy()
-    data_new["FinalCO2Law"] = data_new.apply(lambda row: label_FinalCO2Law(row), axis=1)
+    data_new["final_co2_law"] = data_new.apply(lambda row: label_final_co2_law(row), axis=1)
 
     if not restricted_features or train:
-        data_new["GICSGroup"] = data_new["GICSGroup"].astype(str)
-        data_new["GICSSector"] = data_new["GICSSector"].astype(str)
-        data_new["GICSInd"] = data_new["GICSInd"].astype(str)
+        data_new["gics_group"] = data_new["gics_group"].astype(str)
+        data_new["gics_sector"] = data_new["gics_sector"].astype(str)
+        data_new["gics_ind"] = data_new["gics_ind"].astype(str)
 
-    data_new["GICSSubInd"] = data_new["GICSSubInd"].astype(str)
+    data_new["gics_sub_ind"] = data_new["gics_sub_ind"].astype(str)
 
-    data_new["IncomeGroup"] = data_new["IncomeGroup"].fillna(
-        data_new["IncomeGroup"].value_counts().index[0]
-    )
+    data_new["income_group"] = data_new["income_group"].fillna(data_new["income_group"].value_counts().index[0])
     income_group_encoder = OrdinalEncoder(categories=[["H", "UM", "LM", "L"]])
-    data_new["IncomeGroup_encoded"] = income_group_encoder.fit_transform(
-        data_new[["IncomeGroup"]]
-    )
+    data_new["income_group_encoded"] = income_group_encoder.fit_transform(data_new[["income_group"]])
 
     final_co2_law_encoder = OrdinalEncoder()
-    data_new["FinalCO2Law_encoded"] = final_co2_law_encoder.fit_transform(
-        data_new[["FinalCO2Law"]]
-    )
-
-    # fiscal_year_encoder = OrdinalEncoder()
-    # data_new["FiscalYear_encoded"] = fiscal_year_encoder.fit_transform(data_new[["FiscalYear"]])
+    data_new["final_co2_law_encoded"] = final_co2_law_encoder.fit_transform(data_new[["final_co2_law"]])
 
     if not restricted_features:
         data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["GICSSector"], prefix="GICSSector_")],
+            [data_new, pd.get_dummies(data_new["gics_sector"], prefix="gics_sector")],
             axis=1,
         )
         data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["GICSGroup"], prefix="GICSGroup_")],
+            [data_new, pd.get_dummies(data_new["gics_group"], prefix="gics_group")],
             axis=1,
         )
-        data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["GICSInd"], prefix="GICSInd_")], axis=1
-        )
+        data_new = pd.concat([data_new, pd.get_dummies(data_new["gics_ind"], prefix="gics_ind_")], axis=1)
 
-    data_new = pd.concat(
-        [data_new, pd.get_dummies(data_new["GICSSubInd"], prefix="GICSSubInd_")], axis=1
-    )
+    data_new = pd.concat([data_new, pd.get_dummies(data_new["gics_sub_ind"], prefix="gics_sub_ind")], axis=1)
 
     return data_new
 
@@ -217,91 +204,67 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     data_new = data_old.copy()
     if train:
-        nb_per_sub_ind = data_new.groupby(["GICSSubInd"])[columnlist].count()
+        nb_per_sub_ind = data_new.groupby(["gics_sub_ind"])[columnlist].count()
         dict_mean_to_impute = pd.DataFrame(columns=columnlist).to_dict()
 
         for column in columnlist:
             dict_mean_to_impute_col = {}
 
             for sub_ind in nb_per_sub_ind[column].index:
-                index_to_fill = data_new[data_new.GICSSubInd == sub_ind].index
-                data_temp = data_new[data_new.GICSSubInd == sub_ind][
-                    [column, "Revenue"]
-                ]
-                data_temp["Revenue_Bkt"] = pd.qcut(
-                    data_temp.Revenue, 10, duplicates="drop"
-                )
+                index_to_fill = data_new[data_new.gics_sub_ind == sub_ind].index
+                data_temp = data_new[data_new.gics_sub_ind == sub_ind][[column, "revenue"]]
+                data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
 
-                if data_temp.groupby("Revenue_Bkt").count()[column].min() < 10:
+                if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                     ind = sub_ind[:-4] + sub_ind[-2:]
-                    data_temp = data_new[data_new.GICSInd == ind][[column, "Revenue"]]
-                    data_temp["Revenue_Bkt"] = pd.qcut(
-                        data_temp.Revenue, 10, duplicates="drop"
-                    )
+                    data_temp = data_new[data_new.gics_ind == ind][[column, "revenue"]]
+                    data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
 
-                    if data_temp.groupby("Revenue_Bkt").count()[column].min() < 10:
+                    if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                         grp = ind[:-4] + ind[-2:]
-                        data_temp = data_new[data_new.GICSGroup == grp][
-                            [column, "Revenue"]
-                        ]
-                        data_temp["Revenue_Bkt"] = pd.qcut(
-                            data_temp.Revenue, 10, duplicates="drop"
-                        )
+                        data_temp = data_new[data_new.gics_group == grp][[column, "revenue"]]
+                        data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
 
-                        if data_temp.groupby("Revenue_Bkt").count()[column].min() < 10:
+                        if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                             sect = grp[:-4] + grp[-2:]
-                            data_temp = data_new[data_new.GICSSector == sect][
-                                [column, "Revenue"]
-                            ]
-                            data_temp["Revenue_Bkt"] = pd.qcut(
-                                data_temp.Revenue, 10, duplicates="drop"
-                            )
-                            filled_sub_ind_values = data_new.loc[
-                                index_to_fill, column
-                            ].fillna(
-                                data_temp.groupby("Revenue_Bkt")[column].transform(
-                                    "mean"
-                                )
+                            data_temp = data_new[data_new.gics_sector == sect][[column, "revenue"]]
+                            data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
+                            filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
+                                data_temp.groupby("revenue_Bkt")[column].transform("mean")
                             )
                             data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                            temp_means = data_temp.groupby("Revenue_Bkt")[column].mean()
+                            temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                             temp_means.index = temp_means.index.astype(str)
                             dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                         else:
-                            filled_sub_ind_values = data_new.loc[
-                                index_to_fill, column
-                            ].fillna(
-                                data_temp.groupby("Revenue_Bkt")[column].transform(
-                                    "mean"
-                                )
+                            filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
+                                data_temp.groupby("revenue_Bkt")[column].transform("mean")
                             )
                             data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                            temp_means = data_temp.groupby("Revenue_Bkt")[column].mean()
+                            temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                             temp_means.index = temp_means.index.astype(str)
                             dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                     else:
-                        filled_sub_ind_values = data_new.loc[
-                            index_to_fill, column
-                        ].fillna(
-                            data_temp.groupby("Revenue_Bkt")[column].transform("mean")
+                        filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
+                            data_temp.groupby("revenue_Bkt")[column].transform("mean")
                         )
                         data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                        temp_means = data_temp.groupby("Revenue_Bkt")[column].mean()
+                        temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                         temp_means.index = temp_means.index.astype(str)
                         dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                 else:
                     filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
-                        data_temp.groupby("Revenue_Bkt")[column].transform("mean")
+                        data_temp.groupby("revenue_Bkt")[column].transform("mean")
                     )
                     data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                    temp_means = data_temp.groupby("Revenue_Bkt")[column].mean()
+                    temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                     temp_means.index = temp_means.index.astype(str)
                     dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
@@ -315,18 +278,12 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
             df_means = json.load(fp)
 
         for column in columnlist:
-            data_temp = data_new[data_new[column].isna()][
-                [column, "GICSSubInd", "Revenue"]
-            ]
+            data_temp = data_new[data_new[column].isna()][[column, "gics_sub_ind", "revenue"]]
 
-            for (
-                sub_ind
-            ) in (
-                data_temp.GICSSubInd.unique()
-            ):  # loop on sub ind that have na for the current column
-                for i in data_temp[data_temp.GICSSubInd == sub_ind].index:
+            for sub_ind in data_temp.gics_sub_ind.unique():  # loop on sub ind that have na for the current column
+                for i in data_temp[data_temp.gics_sub_ind == sub_ind].index:
                     count = 0
-                    temp_revenue = data_new.loc[i, "Revenue"]
+                    temp_revenue = data_new.loc[i, "revenue"]
 
                     for interval in df_means[column][sub_ind].keys():
                         # print(interval)
@@ -349,7 +306,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 def encoding(df, path_intermediary, train, restricted_features):
     """
     This function encodes and processes the input dataframe 'df' as follows:
-    1. Removes rows from 'df' where 'FinalEikonID' is equal to 'OMH.AX', 'NHH.MC' or '1101.HK'.
+    1. Removes rows from 'df' where 'company_id' is equal to 'OMH.AX', 'NHH.MC' or '1101.HK'.
     2. Defines lists of columns to be log-transformed, filled with mean industry values, and filled with next year values.
     3. Applies the 'processingrawdata' function to 'df' with the 'ThousandList' columns and fills missing values with mean industry values.
     4. Fills missing values for the 'FillList' columns with the next available year's value.
@@ -368,57 +325,57 @@ def encoding(df, path_intermediary, train, restricted_features):
         Encoded and processed dataframe.
     """
     if restricted_features:
-        FillList = ["Asset", "EBIT"]
+        FillList = ["asset", "ebit"]
         LogList = [
-            "Revenue",
-            "Asset",
-            "CF1",
-            "CF2",
-            "CF3",
-            "CF123",
-            "EBIT",
+            "revenue",
+            "asset",
+            "cf1",
+            "cf2",
+            "cf3",
+            "cf123",
+            "ebit",
         ]
     else:
         FillList = [
-            # "Revenue",
-            "EMP",
-            "Asset",
-            "NPPE",
-            "INTAN",
-            "CapEx",
-            "Age",
-            "CapInten",
-            "GMAR",
-            "Leverage",
-            "ENEConsume",
-            "ENEProduce",
-            "LTDebt",
-            "GPPE",
-            "AccuDep",
-            "COGS",
-            "EBIT",
-            "EBITDA",
+            # "revenue",
+            "employees",
+            "asset",
+            "nppe",
+            "intan",
+            "capex",
+            "age",
+            "cap_inten",
+            "gmar",
+            "leverage",
+            "energy_consumed",
+            "energy_produced",
+            "lt_debt",
+            "gppe",
+            "accu_dep",
+            "cogs",
+            "ebit",
+            "ebitda",
         ]
 
         LogList = [
-            "Revenue",
-            "CapEx",
-            "GPPE",
-            "NPPE",
-            "AccuDep",
-            "INTAN",
-            "COGS",
-            "EMP",
-            "Asset",
-            "LTDebt",
-            "CF1",
-            "CF2",
-            "CF3",
-            "CF123",
-            "ENEConsume",
-            "ENEProduce",
-            "EBIT",
-            "EBITDA",
+            "revenue",
+            "capex",
+            "gppe",
+            "nppe",
+            "accu_dep",
+            "intan",
+            "cogs",
+            "employees",
+            "asset",
+            "lt_debt",
+            "cf1",
+            "cf2",
+            "cf3",
+            "cf123",
+            "energy_consumed",
+            "energy_produced",
+            "ebit",
+            "ebitda",
         ]
 
     df = processingrawdata(df, restricted_features, train=train)
@@ -449,7 +406,7 @@ def selected_features(
     """
     df = pd.concat([df_train, df_test])
 
-    encoded_variables = ["FinalCO2Law_encoded", "IncomeGroup_encoded"]
+    encoded_variables = ["final_co2_law_encoded", "income_group_encoded"]
     fixed_features = extended_features + encoded_variables
 
     for sect in selec_sect:
@@ -485,14 +442,11 @@ def outliers_preprocess(
     """
     index_to_drop = []
 
-    # df[f"intensity_{scope}"] = df[scope] - df["Revenue_log"]  # = np.log(df[scope] / df["Revenue"])
     scope = scope
-    df[f"intensity_{scope}"] = np.log(
-        df[scope] / df["Revenue"]
-    )  # = np.log(df[scope] / df["Revenue"])
+    df[f"intensity_{scope}"] = np.log(df[scope] / df["revenue"])
 
-    for subindustry in df["GICSSubInd"].unique():
-        subset = df[df["GICSSubInd"] == subindustry]
+    for subindustry in df["gics_sub_ind"].unique():
+        subset = df[df["gics_sub_ind"] == subindustry]
         if len(subset) > 10:
             median_subind = subset[f"intensity_{scope}"].quantile(0.50)
             Q1 = subset[f"intensity_{scope}"].quantile(0.25)
@@ -515,34 +469,12 @@ def outliers_preprocess(
 
 def custom_train_split(
     dataset,
-    path_Benchmark,
+    path_benchmark,
     path_intermediary,
     target,
-    extended_features=[
-        "Revenue_log",
-        "EMP_log",
-        "Asset_log",
-        "NPPE_log",
-        "CapEx_log",
-        "Age",
-        "CapInten",
-        "GMAR",
-        "Leverage",
-        "Price",
-        "FuelIntensity",
-        "FiscalYear",
-        "ENEConsume_log",
-        "ENEProduce_log",
-        "INTAN_log",
-        "GPPE_log",
-        "EBIT_log",
-        "EBITDA_log",
-        "AccuDep_log",
-        "COGS_log",
-        "LTDebt_log",
-    ],
+    extended_features,
     restricted_features=False,
-    selec_sect=["GICSSect", "GICSGroup", "GICSInd", "GICSSubInd"],
+    selec_sect=["gics_sect", "gics_group", "gics_ind", "gics_sub_ind"],
 ):
     """
     This function performs a custom train-test split on a given dataset, preprocesses the data, selects relevant features, and returns the processed data and relevant features.
@@ -555,7 +487,7 @@ def custom_train_split(
     Parameters:
 
     dataset: The input dataset to be split and preprocessed.
-    path_Benchmark: The path of a file containing the benchmark date for the train-test split.
+    path_benchmark: The path of a file containing the benchmark date for the train-test split.
     path_intermediary: The path of a file containing the mean and minimum values for mean imputation.
     Returns:
 
@@ -577,9 +509,7 @@ def custom_train_split(
     except FileNotFoundError:
         print("Files not found, constructing them")
 
-        df_train_before_imputation, df_test_before_imputation = df_split(
-            dataset, path_Benchmark
-        )
+        df_train_before_imputation, df_test_before_imputation = df_split(dataset, path_benchmark)
 
         df_train, df_test = (
             encoding(
@@ -613,14 +543,12 @@ def custom_train_split(
         df_train.to_parquet(path_intermediary + "df_train.parquet")
         df_test.to_parquet(path_intermediary + "df_test.parquet")
 
-    df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
-        df_test, target
-    )
-    if target in ["CF1_log", "CF3_log", "CF2_log", "CF123_log"]:
+    df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(df_test, target)
+    if target in ["cf1_log", "cf3_log", "cf2_log", "cf123_log"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target]
         X_test, y_test = df_test[features], df_test[target]
-    elif target in ["CF1_log_CF123", "CF3_log_CF123", "CF2_log_CF123"]:
+    elif target in ["cf1_log_cf123", "cf3_log_cf123", "cf2_log_cf123"]:
         target = target[:-6]
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target]
