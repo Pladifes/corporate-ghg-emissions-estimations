@@ -15,8 +15,18 @@ def apply_model_on_forbes_data(
     save=False,
 ):
     """
-    This function apply pre saved models to forbes data to predict scope 1, 2 and 3 emissions.
-    WARINING : models has to be restricted to Sales (revenue), Profits (ebit) and assets (asset), and gics_sub_ind Names.
+    Apply pre-saved machine learning models to Forbes data to predict scope 1, 2, and 3 emissions.
+
+    Parameters:
+        path_rawdata (str, optional): Path to the directory containing raw data files. Defaults to "data/raw_data/".
+        path_results (str, optional): Path to the directory where the results will be saved. Defaults to "results/".
+        path_intermediary (str, optional): Path to the directory containing intermediary data. Defaults to "data/intermediary_data/".
+        path_models (str, optional): Path to the directory containing pre-saved machine learning models. Defaults to "models/".
+        save (bool, optional): If True, save the results to an Excel file. Defaults to False.
+
+    Returns:
+        pandas.DataFrame: A DataFrame containing Forbes data with additional columns for estimated emissions.
+
     """
     df_forbes = pd.read_excel(path_rawdata + "forbes_2007_2022_completed.xlsx")
     carbon_pricing = pd.read_csv(
@@ -75,11 +85,16 @@ def apply_model_on_forbes_data(
         df_forbes[scope + "_e"] = np.power(10, scope_pred + 1)
 
     df_forbes["cf1_e + cf2_e + cf3_e"] = (
-        df_forbes["cf1_e"] + df_forbes["cf2_e"] + df_forbes["cf3_e"] + df_forbes["cf123_e"]
+        df_forbes["cf1_e"]
+        + df_forbes["cf2_e"]
+        + df_forbes["cf3_e"]
+        + df_forbes["cf123_e"]
     )
 
     if save:
-        df_forbes.to_excel(path_results + "pladifes_free_emissions_estimates.xlsx", index=False)
+        df_forbes.to_excel(
+            path_results + "pladifes_free_emissions_estimates.xlsx", index=False
+        )
 
     return df_forbes
 
@@ -112,8 +127,6 @@ def apply_model_on_raw_data(
 
     Note: Make sure the models used are appropriate for the provided 'dataset'.
 
-    Example usage:
-    estimations = apply_model_on_raw_data(raw_data, save=True)
     """
     estimations = dataset[["company_id", "fiscal_year", "isin", "ticker", "gics_name"]]
     for scope in ["cf1", "cf2", "cf3", "cf123"]:
@@ -131,10 +144,15 @@ def apply_model_on_raw_data(
         estimations[scope + "_e"] = np.power(10, scope_pred + 1)
 
     estimations["cf1_e + cf2_e + cf3_e"] = (
-        estimations["cf1_e"] + estimations["cf2_e"] + estimations["cf3_e"] + estimations["cf123_e"]
+        estimations["cf1_e"]
+        + estimations["cf2_e"]
+        + estimations["cf3_e"]
+        + estimations["cf123_e"]
     )
 
     if save:
-        estimations.to_excel(path_results + "pladifes_free_emissions_estimates.xlsx", index=False)
+        estimations.to_excel(
+            path_results + "pladifes_free_emissions_estimates.xlsx", index=False
+        )
 
     return estimations

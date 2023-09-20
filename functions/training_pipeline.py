@@ -1,5 +1,10 @@
 from functions.preprocessing import custom_train_split
 from functions.results import best_model_analysis, metrics, results
+import logging
+import time
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def training_pipeline(
@@ -90,7 +95,8 @@ def training_pipeline(
     best_stds = []
 
     for target in targets:
-        print(target)
+        logger.info(f"Training for target: {target}")
+        start_time = time.time()
         test_scores = []
         test_stds = []
         (X_train, y_train, X_test, y_test, df_test,) = custom_train_split(
@@ -102,11 +108,11 @@ def training_pipeline(
             selec_sect=training_parameters["selec_sect"],
             restricted_features=restricted_features,
         )
-        print("preprocessing done")
-
+        logger.info("Preprocessing done")
         seed = training_parameters["seed"]
         n_iter = training_parameters["n_iter"]
         for i, (model_name, model) in enumerate(models.items()):
+            logger.info(f"Training model: {model_name}")
             model_i = model(
                 X_train,
                 y_train,
@@ -117,28 +123,42 @@ def training_pipeline(
                 seed=seed,
             )
             y_pred = model_i.predict(X_test)
-            summary_global, rmse, std = metrics(y_test, y_pred, summary_final, target, model_name)
+            summary_global, rmse, std = metrics(
+                y_test, y_pred, summary_final, target, model_name
+            )
             ensemble.append(model_i)
             test_scores.append(rmse)
             test_stds.append(std)
 
         best_scores.append(test_scores[test_scores.index(min(test_scores))])
         best_stds.append(test_stds[test_scores.index(min(test_scores))])
-        print("modelisation done")
+        logger.info("Modelization done")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Elapsed time for target {target}: {elapsed_time:.2f} seconds")
 
         if save:
             best_model_index = test_scores.index(min(test_scores))
             best_model = ensemble[best_model_index]
 
             index_ini = df_test.index
-            # df_test = df_test.merge(
-            #     preprocessed_dataset[["company_id", "fiscal_year", "gics_name", "region", "country_hq"]],
-            #     on=["company_id", "fiscal_year"],
-            #     how="left",
-            # )
+            df_test = df_test.merge(
+                preprocessed_dataset[
+                    ["company_id", "fiscal_year", "gics_name", "region", "country_hq"]
+                ],
+                on=["company_id", "fiscal_year"],
+                how="left",
+            )
             if not restricted_features:
                 df_test = df_test.merge(
-                    preprocessed_dataset[["company_id", "fiscal_year", "energy_consumed", "energy_produced"]],
+                    preprocessed_dataset[
+                        [
+                            "company_id",
+                            "fiscal_year",
+                            "energy_consumed",
+                            "energy_produced",
+                        ]
+                    ],
                     on=["company_id", "fiscal_year"],
                     how="left",
                 )
@@ -160,6 +180,8 @@ def training_pipeline(
                 path_models,
             )
     if save:
-        results(estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst)
+        results(
+            estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst
+        )
 
     return best_scores, best_stds, summary_global, summary_metrics_detailed

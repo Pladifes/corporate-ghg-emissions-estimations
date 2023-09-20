@@ -6,6 +6,9 @@ from functions.loading import load_data
 from functions.training_pipeline import training_pipeline
 from functions.models import catboost_model
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 warnings.filterwarnings("ignore")
 pd.options.mode.chained_assignment = None
 
@@ -52,7 +55,7 @@ def production_pipeline(
 
     Note: This function is designed for a specific use case and may require additional context to understand its full functionality.
     """
-    # Training parameters definition, has to be changed outside this function
+    logging.info("Starting production pipeline")
     training_parameters = {
         "seed": 0,
         "n_iter": 10,
@@ -84,11 +87,14 @@ def production_pipeline(
     estimated_scopes = []
     save = True
 
-    # Dataset loading
     preprocessed_dataset = load_data(path_rawdata, save=save)
 
-    # Preprocessing, training and outputs generation
-    best_scores, best_stds, summary_global, summary_metrics_detailed = training_pipeline(
+    (
+        best_scores,
+        best_stds,
+        summary_global,
+        summary_metrics_detailed,
+    ) = training_pipeline(
         path_benchmark=path_benchmark,
         path_results=path_results,
         path_models=path_models,
@@ -105,5 +111,6 @@ def production_pipeline(
         restricted_features=restricted_features,
         save=save,
     )
+    logging.info("Production pipeline completed")
 
     return

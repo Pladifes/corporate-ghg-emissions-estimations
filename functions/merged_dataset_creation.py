@@ -1,6 +1,3 @@
-import logging
-
-
 import numpy as np
 import pandas as pd
 
@@ -98,20 +95,27 @@ def initial_preprocessing(df):
 
     medians_per_years = df.groupby("fiscal_year")["fuel_intensity"].median()
     for year in range(df.fiscal_year.min(), df.fiscal_year.max() + 1):
-        df.loc[(df.fiscal_year == year) & (df.fuel_intensity.isna()), "fuel_intensity"] = medians_per_years[year]
+        df.loc[
+            (df.fiscal_year == year) & (df.fuel_intensity.isna()), "fuel_intensity"
+        ] = medians_per_years[year]
 
     df.loc[df[df.country_hq == "Guernsey"].index, "income_group"] = "H"
     df.loc[df[df.country_hq == "Jersey"].index, "income_group"] = "H"
 
     df.loc[df[(df.cf1.isna()) | (df.cf2.isna()) | (df.cf3.isna())].index, "cf123"] = [
-        np.nan for i in range(len(df[(df.cf1.isna()) | (df.cf2.isna()) | (df.cf3.isna())]))
+        np.nan
+        for i in range(len(df[(df.cf1.isna()) | (df.cf2.isna()) | (df.cf3.isna())]))
     ]
 
-    df.loc[df[df.cf1 == 0].index, "cf1"] = [df[df.cf1 > 0].cf1.min() for i in range(len(df[df.cf1 == 0]))]
+    df.loc[df[df.cf1 == 0].index, "cf1"] = [
+        df[df.cf1 > 0].cf1.min() for i in range(len(df[df.cf1 == 0]))
+    ]
     return df
 
 
-def create_preprocessed_dataset(input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping):
+def create_preprocessed_dataset(
+    input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
+):
     """
     Creates a merged dataset from multiple data sources and performs preprocessing steps on it.
 
@@ -139,7 +143,9 @@ def create_preprocessed_dataset(input_dataset, carbon_pricing, income_group, fue
     Returns:
     - preprocessed_dataset (DataFrame): The preprocessed and merged dataset.
     """
-    df_merged = merge_datasets(input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping)
+    df_merged = merge_datasets(
+        input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
+    )
 
     preprocessed_dataset = initial_preprocessing(df_merged)
     return preprocessed_dataset

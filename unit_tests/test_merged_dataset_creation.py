@@ -11,7 +11,7 @@ from functions.merged_dataset_creation import merge_datasets
 class TestMergeDatasets(unittest.TestCase):
     def setUp(self):
         raw_data_path = "data/raw_data/"
-        self.input_dataset = pd.read_csv("unit_tests/test_dataset/test_dataset.csv")
+        self.input_dataset = pd.read_parquet(raw_data_path + "input_dataset.parquet")
         self.carbon_pricing = pd.read_csv(
             raw_data_path + "carbon_pricing_preprocessed_2023.csv"
         )

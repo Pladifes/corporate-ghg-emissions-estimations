@@ -1,12 +1,12 @@
-import logging
-
 import pandas as pd
 
 from functions.merged_dataset_creation import create_preprocessed_dataset
 from functions.preprocessing import outliers_preprocess
 
 
-def load_data(path, filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False):
+def load_data(
+    path, filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
+):
     """
     Load pre-downloaded datasets from the specified path or construct them if missing.
 
@@ -30,7 +30,9 @@ def load_data(path, filter_outliers=True, threshold_under=1.5, threshold_over=2.
     data = load_data("data/", filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=True)
     """
     try:
-        preprocessed_dataset = pd.read_parquet(path + "cgee_preprocessed_dataset_2023.parquet")
+        preprocessed_dataset = pd.read_parquet(
+            path + "cgee_preprocessed_dataset_2023.parquet"
+        )
 
     except FileNotFoundError:
         print("File not found, constructing it")
@@ -49,7 +51,9 @@ def load_data(path, filter_outliers=True, threshold_under=1.5, threshold_over=2.
             input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
         )
         if save:
-            preprocessed_dataset.to_parquet(path + "cgee_preprocessed_dataset_2023.parquet")
+            preprocessed_dataset.to_parquet(
+                path + "cgee_preprocessed_dataset_2023.parquet"
+            )
 
     if filter_outliers:
         for target in ["cf1", "cf2", "cf3", "cf123"]:

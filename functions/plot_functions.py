@@ -43,6 +43,17 @@ def plot_detailed(rmses, target, plot_path, category):
 
 
 def plot_revenue_bucket(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different revenue buckets.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different revenue buckets.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping revenue buckets to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="revenue_bucket", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} per revenue buckets")
@@ -53,6 +64,17 @@ def plot_revenue_bucket(rmses, target, plot_path, sector_colors):
 
 
 def plot_region(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different region.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different region.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping region to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="region", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} per regions")
@@ -63,6 +85,17 @@ def plot_region(rmses, target, plot_path, sector_colors):
 
 
 def plot_country(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different countries.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different countries.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping countries to their respective colors.
+
+    """
     countries_to_keep = rmses.country.unique().tolist()[:5] + rmses.country.unique().tolist()[-5:]
     rmses_filtered = rmses[rmses.country.isin(countries_to_keep)]
     rmses_filtered["country"] = rmses_filtered["country"].astype(str)
@@ -76,6 +109,17 @@ def plot_country(rmses, target, plot_path, sector_colors):
 
 
 def plot_industry(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different industries.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different industries.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping industries to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="industry", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} per industry")
@@ -86,6 +130,17 @@ def plot_industry(rmses, target, plot_path, sector_colors):
 
 
 def plot_sub_sector(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different sectors.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different sectors.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping sectors to their respective colors.
+
+    """
     sectors_to_keep = rmses.sub_sector.unique().tolist()[:5] + rmses.sub_sector.unique().tolist()[-5:]
     rmses_filtered = rmses[rmses.sub_sector.isin(sectors_to_keep)]
     rmses_filtered["sub_sector"] = rmses_filtered["sub_sector"].astype(str)
@@ -100,6 +155,17 @@ def plot_sub_sector(rmses, target, plot_path, sector_colors):
 
 
 def plot_year(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different years.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different years.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping years to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="year", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} per years")
@@ -110,6 +176,17 @@ def plot_year(rmses, target, plot_path, sector_colors):
 
 
 def plot_energy_consumed_log(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different energy consumed.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different energy consumed.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping energy consumed to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="energy_consumed", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} depending on energy_consumed availability")
@@ -120,6 +197,17 @@ def plot_energy_consumed_log(rmses, target, plot_path, sector_colors):
 
 
 def plot_energy_produced_log(rmses, target, plot_path, sector_colors):
+    """
+    Generate a box plot of Root Mean Square Errors (RMSEs) for a given target variable
+    across different energy produced.
+
+    Parameters:
+        rmses (DataFrame): A DataFrame containing RMSE values for different energy produced.
+        target (str): The target variable for which RMSEs are being plotted.
+        plot_path (str): The path where the generated plot image will be saved.
+        sector_colors (dict): A dictionary mapping energy produced to their respective colors.
+
+    """
     plt.figure(figsize=(10, 8))
     ax = sns.boxplot(x="energy_produced", y=rmses.rmses, data=rmses, palette=sector_colors)
     plt.title(f"RMSEs box plot for {target} depending on energy_produced availability")

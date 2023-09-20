@@ -249,7 +249,9 @@ def catboost_model(
                 "iterations": int(iterations),
             }
             model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs).mean()
+            score = cross_val_score(
+                model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs
+            ).mean()
 
             return score
 
@@ -276,7 +278,6 @@ def catboost_model(
             l2_leaf_reg=catboost_bo.max["params"]["l2_leaf_reg"],
             rsm=catboost_bo.max["params"]["rsm"],
             subsample=catboost_bo.max["params"]["subsample"],
-            # iterations=catboost_bo.max["params"]["iterations"]
         )
 
     cat_train_data = Pool(data=X_train, label=y_train)

@@ -15,33 +15,6 @@ from functions.preprocessing import target_preprocessing
 from functions.plot_functions import plot, plot_detailed
 
 
-def gics_to_name(gics_sector):
-    if gics_sector == 10.0:
-        return "Energy"
-    elif gics_sector == 15.0:
-        return "Materials"
-    elif gics_sector == 20.0:
-        return "Industrials"
-    elif gics_sector == 25.0:
-        return "Cons. Discretionary"
-    elif gics_sector == 30.0:
-        return "Cons. Staples"
-    elif gics_sector == 35.0:
-        return "Health Care"
-    elif gics_sector == 40.0:
-        return "Financials"
-    elif gics_sector == 45.0:
-        return "IT"
-    elif gics_sector == 50.0:
-        return "Telecommunication"
-    elif gics_sector == 55.0:
-        return "Utilities"
-    elif gics_sector == 60.0:
-        return "Real Estate"
-    else:
-        return gics_sector
-
-
 def summary_detailed(
     X_test, y_test, y_pred, df_test, target, restricted_features, path_plot
 ):
@@ -84,7 +57,9 @@ def summary_detailed(
     X_test_copy["year"] = df_test_copy.fiscal_year.values
 
     if not restricted_features:
-        df_test_copy["sectors"] = df_test_copy["gics_sector"].astype(float).apply(gics_to_name)
+        df_test_copy["sectors"] = (
+            df_test_copy["gics_sector"].astype(float).apply(gics_to_name)
+        )
         X_test_copy["energy_consumed"] = df_test_copy.energy_consumed_y.isna().values
         X_test_copy["energy_produced"] = df_test_copy.energy_produced_y.isna().values
         X_test_copy["industry"] = df_test_copy.sectors.values
@@ -355,7 +330,9 @@ def best_model_analysis(
     return summary_metrics_detailed, estimated_scopes, lst
 
 
-def results(estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst):
+def results(
+    estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst
+):
     """
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
@@ -372,15 +349,59 @@ def results(estimated_scopes, path_results, summary_metrics_detailed, summary_fi
     nb_targets = len(estimated_scopes)
     merged_estimated_scopes = estimated_scopes[0]
     for k in range(1, nb_targets):
-        merged_estimated_scopes = pd.merge(merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer")
-    merged_estimated_scopes = merged_estimated_scopes.sort_values(by=["company_id", "fiscal_year"])
+        merged_estimated_scopes = pd.merge(
+            merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer"
+        )
+    merged_estimated_scopes = merged_estimated_scopes.sort_values(
+        by=["company_id", "fiscal_year"]
+    )
     merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
     profile = ProfileReport(merged_estimated_scopes, minimal=True)
     profile.to_file(path_results + "scopes_summary.html")
     merged_estimated_scopes.to_csv(path_results + "estimated_scopes.csv", index=False)
-    summary_metrics_detailed.to_csv(path_results + "summary_metrics_detail.csv", index=False)
+    summary_metrics_detailed.to_csv(
+        path_results + "summary_metrics_detail.csv", index=False
+    )
     dict_recap = {}
     for key in ["Target", "model", "mae", "mse", "r2", "rmse", "mape", "std"]:
         dict_recap[key] = [summary_final[i][key] for i in range(len(summary_final))]
     df_summary_final = pd.DataFrame.from_dict(dict_recap)
     df_summary_final.to_csv(path_results + "summary_metrics.csv", index=False)
+
+
+def gics_to_name(gics_sector):
+    """
+    Converts a GICS (Global Industry Classification Standard) sector code into the corresponding sector name.
+
+    Parameters:
+        gics_sector (float): The GICS sector code to be converted.
+
+    Returns:
+        str: The name of the GICS sector corresponding to the input code. If the input code does not match
+             any known GICS sector, the input code itself is returned as a string.
+    """
+
+    if gics_sector == 10.0:
+        return "Energy"
+    elif gics_sector == 15.0:
+        return "Materials"
+    elif gics_sector == 20.0:
+        return "Industrials"
+    elif gics_sector == 25.0:
+        return "Cons. Discretionary"
+    elif gics_sector == 30.0:
+        return "Cons. Staples"
+    elif gics_sector == 35.0:
+        return "Health Care"
+    elif gics_sector == 40.0:
+        return "Financials"
+    elif gics_sector == 45.0:
+        return "IT"
+    elif gics_sector == 50.0:
+        return "Telecommunication"
+    elif gics_sector == 55.0:
+        return "Utilities"
+    elif gics_sector == 60.0:
+        return "Real Estate"
+    else:
+        return gics_sector

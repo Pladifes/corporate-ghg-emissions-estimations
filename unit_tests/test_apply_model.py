@@ -40,5 +40,6 @@ class TestApplyModelOnForbesData(unittest.TestCase):
             os.path.isfile(self.path_results + "pladifes_free_emissions_estimates.xlsx")
         )
 
+
 if __name__ == "__main__":
     unittest.main()
