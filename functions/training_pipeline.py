@@ -99,7 +99,13 @@ def training_pipeline(
         start_time = time.time()
         test_scores = []
         test_stds = []
-        (X_train, y_train, X_test, y_test, df_test,) = custom_train_split(
+        (
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+            df_test,
+        ) = custom_train_split(
             preprocessed_dataset,
             path_benchmark,
             path_intermediary,
@@ -123,16 +129,14 @@ def training_pipeline(
                 seed=seed,
             )
             y_pred = model_i.predict(X_test)
-            summary_global, rmse, std = metrics(
-                y_test, y_pred, summary_final, target, model_name
-            )
+            summary_global, rmse, std = metrics(y_test, y_pred, summary_final, target, model_name)
             ensemble.append(model_i)
             test_scores.append(rmse)
             test_stds.append(std)
 
         best_scores.append(test_scores[test_scores.index(min(test_scores))])
         best_stds.append(test_stds[test_scores.index(min(test_scores))])
-        logger.info("Modelization done")
+        logger.info("Modelisation done")
         end_time = time.time()
         elapsed_time = end_time - start_time
         logger.info(f"Elapsed time for target {target}: {elapsed_time:.2f} seconds")
@@ -141,28 +145,26 @@ def training_pipeline(
             best_model_index = test_scores.index(min(test_scores))
             best_model = ensemble[best_model_index]
 
-            index_ini = df_test.index
-            df_test = df_test.merge(
-                preprocessed_dataset[
-                    ["company_id", "fiscal_year", "gics_name", "region", "country_hq"]
-                ],
-                on=["company_id", "fiscal_year"],
-                how="left",
-            )
-            if not restricted_features:
-                df_test = df_test.merge(
-                    preprocessed_dataset[
-                        [
-                            "company_id",
-                            "fiscal_year",
-                            "energy_consumed",
-                            "energy_produced",
-                        ]
-                    ],
-                    on=["company_id", "fiscal_year"],
-                    how="left",
-                )
-            df_test.index = index_ini
+            # index_ini = df_test.index
+            # df_test = df_test.merge(
+            #     preprocessed_dataset[["company_id", "fiscal_year", "gics_name", "region", "country_hq"]],
+            #     on=["company_id", "fiscal_year"],
+            #     how="left",
+            # )
+            # if not restricted_features:
+            #     df_test = df_test.merge(
+            #         preprocessed_dataset[
+            #             [
+            #                 "company_id",
+            #                 "fiscal_year",
+            #                 "energy_consumed",
+            #                 "energy_produced",
+            #             ]
+            #         ],
+            #         on=["company_id", "fiscal_year"],
+            #         how="left",
+            #     )
+            # df_test.index = index_ini
 
             summary_metrics_detailed, estimated_scopes, lst = best_model_analysis(
                 best_model,
@@ -180,8 +182,6 @@ def training_pipeline(
                 path_models,
             )
     if save:
-        results(
-            estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst
-        )
+        results(estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst)
 
     return best_scores, best_stds, summary_global, summary_metrics_detailed

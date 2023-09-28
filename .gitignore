@@ -125,6 +125,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# project specific
 data/raw_data/
 data/intermediary_data/
 catboost_info/
@@ -132,5 +133,7 @@ mlruns/
 GHG_estimation_tests_all.ipynb
 results/
 models/
-models/open_data
-models/proprietary_data
+
+# exception (for unit tests)
+!data/unit_test_data/models/
+!data/unit_test_data/results/

@@ -1,5 +1,8 @@
 # CGEE - Corporate GHG Emissions Estimations
 
+# Temporary remark : des erreur peuvent survenir dans les tests unitaire (tkinter.TclError: invalid command name "tcl_findLibrary", _tkinter.TclError: Can't find a usable init.tcl in the following directories:). Cela marche quand j'ai un explorateur de fichier ouvert à C:\Users\thibaud.barreau\AppData\Local\Programs\Python\Python39\tcl mais j'aimerais rouver une meilleur solution au problème (des post stackoverflow existe mais je ne comprend pas tout et n'ai pas le temps). 
+
+
 - [About CGEE 💡](#about)
 
   - [Context](#context)

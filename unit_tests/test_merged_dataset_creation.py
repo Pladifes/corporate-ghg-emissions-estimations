@@ -10,21 +10,14 @@ from functions.merged_dataset_creation import merge_datasets
 
 class TestMergeDatasets(unittest.TestCase):
     def setUp(self):
-        raw_data_path = "data/raw_data/"
-        self.input_dataset = pd.read_parquet(raw_data_path + "input_dataset.parquet")
-        self.carbon_pricing = pd.read_csv(
-            raw_data_path + "carbon_pricing_preprocessed_2023.csv"
-        )
-        self.income_group = pd.read_csv(
-            raw_data_path + "income_group_preprocessed_2023.csv"
-        )
-        self.fuel_intensity = pd.read_csv(raw_data_path + "fuel_mix_2023.csv")
-        self.region_mapping = pd.read_excel(
-            raw_data_path + "country_region_mapping.xlsx"
-        )
+        test_data_path = "data/unit_test_data/"
+        self.input_dataset = pd.read_parquet(test_data_path + "input_dataset.parquet")
+        self.carbon_pricing = pd.read_csv(test_data_path + "carbon_pricing_preprocessed_2023.csv")
+        self.income_group = pd.read_csv(test_data_path + "income_group_preprocessed_2023.csv")
+        self.fuel_intensity = pd.read_csv(test_data_path + "fuel_mix_2023.csv")
+        self.region_mapping = pd.read_excel(test_data_path + "country_region_mapping.xlsx")
 
     def test_merge_datasets(self):
-
         merged_df = merge_datasets(
             self.input_dataset,
             self.carbon_pricing,
