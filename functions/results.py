@@ -60,8 +60,8 @@ def summary_detailed(
         df_test_copy["sectors"] = (
             df_test_copy["gics_sector"].astype(float).apply(gics_to_name)
         )
-        X_test_copy["energy_consumed"] = df_test_copy.energy_consumed_y.isna().values
-        X_test_copy["energy_produced"] = df_test_copy.energy_produced_y.isna().values
+        X_test_copy["energy_consumed"] = df_test_copy.energy_consumed.isna().values
+        X_test_copy["energy_produced"] = df_test_copy.energy_produced.isna().values
         X_test_copy["industry"] = df_test_copy.sectors.values
         categories = [
             "revenue_bucket",

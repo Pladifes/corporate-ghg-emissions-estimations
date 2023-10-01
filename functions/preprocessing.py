@@ -83,7 +83,9 @@ def set_columns(df, features):
 
     missing_cols = list(set(features) - set(df.columns))
     if missing_cols:
-        df = pd.concat([df, pd.DataFrame(0, index=df.index, columns=missing_cols)], axis=1)
+        df = pd.concat(
+            [df, pd.DataFrame(0, index=df.index, columns=missing_cols)], axis=1
+        )
     return df
 
 
@@ -128,7 +130,9 @@ def logtransform(df, ls, path_results, train):
                 if min_l <= res[l].min():
                     res[l + "_log"] = np.log10(res[l] - min_l + 1)
                 else:
-                    res.loc[res[res[l] < min_l].index, l + "_log"] = 0  # = log(1) = log(min_l - min_l  + 1)
+                    res.loc[
+                        res[res[l] < min_l].index, l + "_log"
+                    ] = 0  # = log(1) = log(min_l - min_l  + 1)
                     res.loc[res[res[l] >= min_l].index, l + "_log"] = np.log10(
                         res.loc[res[res[l] >= min_l].index, l] - min_l + 1
                     )
@@ -164,21 +168,29 @@ def processingrawdata(data_old, restricted_features, train):
     - data_new (pandas DataFrame): the processed data, with new columns generated for ordinal encoded variables.
     """
     data_new = data_old.copy()
-    data_new["final_co2_law"] = data_new.apply(lambda row: label_final_co2_law(row), axis=1)
+    data_new["final_co2_law"] = data_new.apply(
+        lambda row: label_final_co2_law(row), axis=1
+    )
 
-    if not restricted_features or train:
+    if not restricted_features :
         data_new["gics_group"] = data_new["gics_group"].astype(str)
         data_new["gics_sector"] = data_new["gics_sector"].astype(str)
         data_new["gics_ind"] = data_new["gics_ind"].astype(str)
 
     data_new["gics_sub_ind"] = data_new["gics_sub_ind"].astype(str)
 
-    data_new["income_group"] = data_new["income_group"].fillna(data_new["income_group"].value_counts().index[0])
+    data_new["income_group"] = data_new["income_group"].fillna(
+        data_new["income_group"].value_counts().index[0]
+    )
     income_group_encoder = OrdinalEncoder(categories=[["H", "UM", "LM", "L"]])
-    data_new["income_group_encoded"] = income_group_encoder.fit_transform(data_new[["income_group"]])
+    data_new["income_group_encoded"] = income_group_encoder.fit_transform(
+        data_new[["income_group"]]
+    )
 
     final_co2_law_encoder = OrdinalEncoder()
-    data_new["final_co2_law_encoded"] = final_co2_law_encoder.fit_transform(data_new[["final_co2_law"]])
+    data_new["final_co2_law_encoded"] = final_co2_law_encoder.fit_transform(
+        data_new[["final_co2_law"]]
+    )
 
     if not restricted_features:
         data_new = pd.concat(
@@ -189,7 +201,9 @@ def processingrawdata(data_old, restricted_features, train):
             [data_new, pd.get_dummies(data_new["gics_group"], prefix="gics_group")],
             axis=1,
         )
-        data_new = pd.concat([data_new, pd.get_dummies(data_new["gics_ind"], prefix="gics_ind_")], axis=1)
+        data_new = pd.concat(
+            [data_new, pd.get_dummies(data_new["gics_ind"], prefix="gics_ind_")], axis=1
+        )
 
     data_new = pd.concat(
         [data_new, pd.get_dummies(data_new["gics_sub_ind"], prefix="gics_sub_ind")],
@@ -220,25 +234,43 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
             for sub_ind in nb_per_sub_ind[column].index:
                 index_to_fill = data_new[data_new.gics_sub_ind == sub_ind].index
-                data_temp = data_new[data_new.gics_sub_ind == sub_ind][[column, "revenue"]]
-                data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
+                data_temp = data_new[data_new.gics_sub_ind == sub_ind][
+                    [column, "revenue"]
+                ]
+                data_temp["revenue_Bkt"] = pd.qcut(
+                    data_temp.revenue, 10, duplicates="drop"
+                )
 
                 if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                     ind = sub_ind[:-4] + sub_ind[-2:]
                     data_temp = data_new[data_new.gics_ind == ind][[column, "revenue"]]
-                    data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
+                    data_temp["revenue_Bkt"] = pd.qcut(
+                        data_temp.revenue, 10, duplicates="drop"
+                    )
 
                     if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                         grp = ind[:-4] + ind[-2:]
-                        data_temp = data_new[data_new.gics_group == grp][[column, "revenue"]]
-                        data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
+                        data_temp = data_new[data_new.gics_group == grp][
+                            [column, "revenue"]
+                        ]
+                        data_temp["revenue_Bkt"] = pd.qcut(
+                            data_temp.revenue, 10, duplicates="drop"
+                        )
 
                         if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
                             sect = grp[:-4] + grp[-2:]
-                            data_temp = data_new[data_new.gics_sector == sect][[column, "revenue"]]
-                            data_temp["revenue_Bkt"] = pd.qcut(data_temp.revenue, 10, duplicates="drop")
-                            filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
-                                data_temp.groupby("revenue_Bkt")[column].transform("mean")
+                            data_temp = data_new[data_new.gics_sector == sect][
+                                [column, "revenue"]
+                            ]
+                            data_temp["revenue_Bkt"] = pd.qcut(
+                                data_temp.revenue, 10, duplicates="drop"
+                            )
+                            filled_sub_ind_values = data_new.loc[
+                                index_to_fill, column
+                            ].fillna(
+                                data_temp.groupby("revenue_Bkt")[column].transform(
+                                    "mean"
+                                )
                             )
                             data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
@@ -247,8 +279,12 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                             dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                         else:
-                            filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
-                                data_temp.groupby("revenue_Bkt")[column].transform("mean")
+                            filled_sub_ind_values = data_new.loc[
+                                index_to_fill, column
+                            ].fillna(
+                                data_temp.groupby("revenue_Bkt")[column].transform(
+                                    "mean"
+                                )
                             )
                             data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
@@ -257,7 +293,9 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                             dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                     else:
-                        filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
+                        filled_sub_ind_values = data_new.loc[
+                            index_to_fill, column
+                        ].fillna(
                             data_temp.groupby("revenue_Bkt")[column].transform("mean")
                         )
                         data_new.loc[index_to_fill, column] = filled_sub_ind_values
@@ -286,7 +324,9 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
             df_means = json.load(fp)
 
         for column in columnlist:
-            data_temp = data_new[data_new[column].isna()][[column, "gics_sub_ind", "revenue"]]
+            data_temp = data_new[data_new[column].isna()][
+                [column, "gics_sub_ind", "revenue"]
+            ]
 
             for sub_ind in data_temp.gics_sub_ind.unique():
                 for i in data_temp[data_temp.gics_sub_ind == sub_ind].index:
@@ -294,13 +334,17 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                     temp_revenue = data_new.loc[i, "revenue"]
 
                     for interval in df_means[column][sub_ind].keys():
-                        borne_inf, borne_sup = float(interval.split(",")[0][1:]), float(interval.split(",")[1][:-1])
+                        borne_inf, borne_sup = float(interval.split(",")[0][1:]), float(
+                            interval.split(",")[1][:-1]
+                        )
                         if count == 0:
                             borne_inf = -np.inf
                         if count == 9:
                             borne_sup = np.inf
                         if borne_inf <= temp_revenue and temp_revenue <= borne_sup:
-                            data_new.loc[i, column] = df_means[column][sub_ind][interval]
+                            data_new.loc[i, column] = df_means[column][sub_ind][
+                                interval
+                            ]
                         count += 1
 
     return data_new
@@ -394,7 +438,9 @@ def encoding(df, path_intermediary, train, restricted_features):
     return df
 
 
-def selected_features(df_train, df_test, path_intermediary, extended_features, selec_sect):
+def selected_features(
+    df_train, df_test, path_intermediary, extended_features, selec_sect
+):
     """
     Selects a set of features from a pandas DataFrame.
 
@@ -410,11 +456,13 @@ def selected_features(df_train, df_test, path_intermediary, extended_features, s
     fixed_features = extended_features + encoded_variables
 
     for sect in selec_sect:
-        fixed_features += [x for x in df.columns if sect + "__" in str(x)]
+        fixed_features += [x for x in df.columns if sect + "_" in str(x)]
 
-    fixed_features = [f.replace(" ", "_") for f in fixed_features]
+    # fixed_features = [f.replace(" ", "_") for f in fixed_features]
 
-    pd.DataFrame(fixed_features, columns=["features"]).to_csv(path_intermediary + "features.csv", index=False)
+    pd.DataFrame(fixed_features, columns=["features"]).to_csv(
+        path_intermediary + "features.csv", index=False
+    )
 
     return fixed_features
 
@@ -454,7 +502,9 @@ def outliers_preprocess(
             max_subind = median_subind + threshold_over * IQR
             min_subind = median_subind - threshold_under * IQR
 
-            condition = (subset[f"intensity_{scope}"] > max_subind) | (subset[f"intensity_{scope}"] < min_subind)
+            condition = (subset[f"intensity_{scope}"] > max_subind) | (
+                subset[f"intensity_{scope}"] < min_subind
+            )
 
             if any(condition):
                 index_to_drop.extend(subset.loc[condition].index.tolist())
@@ -505,7 +555,9 @@ def custom_train_split(
     except FileNotFoundError:
         print("Files not found, constructing them")
 
-        df_train_before_imputation, df_test_before_imputation = df_split(dataset, path_benchmark)
+        df_train_before_imputation, df_test_before_imputation = df_split(
+            dataset, path_benchmark
+        )
 
         df_train, df_test = (
             encoding(
@@ -529,7 +581,9 @@ def custom_train_split(
             extended_features=extended_features,
             selec_sect=selec_sect,
         )
-        df_train, df_test = set_columns(df_train, features), set_columns(df_test, features)
+        df_train, df_test = set_columns(df_train, features), set_columns(
+            df_test, features
+        )
 
         df_train.index.name = "saved_index"
         df_test.index.name = "saved_index"
@@ -537,7 +591,9 @@ def custom_train_split(
         df_train.to_parquet(path_intermediary + "df_train.parquet")
         df_test.to_parquet(path_intermediary + "df_test.parquet")
 
-    df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(df_test, target)
+    df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
+        df_test, target
+    )
     if target in ["cf1_log", "cf3_log", "cf2_log", "cf123_log"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target]
