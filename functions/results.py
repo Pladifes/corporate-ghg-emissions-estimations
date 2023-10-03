@@ -317,16 +317,16 @@ def best_model_analysis(
     summary_metrics_detailed = pd.concat(
         [summary_metrics_detailed, metrics_scope], ignore_index=True
     )
-
+    # if not restricted_features:
     estimated_scopes, lst = scopes_report(
-        dataset,
-        target,
-        best_model,
-        estimated_scopes,
-        path_intermediary,
-        restricted_features=restricted_features,
-        path_models=path_models,
-    )
+            dataset,
+            target,
+            best_model,
+            estimated_scopes,
+            path_intermediary,
+            restricted_features=restricted_features,
+            path_models=path_models,
+        )
     return summary_metrics_detailed, estimated_scopes, lst
 
 

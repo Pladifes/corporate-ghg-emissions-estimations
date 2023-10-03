@@ -307,5 +307,4 @@ def plot(model, X, y_test, y_pred, plot_path, target):
     plot_shap_values(model, X)
     plot_y_test_y_pred(y_test, y_pred)
     plot_residuals(y_test, y_pred)
-    plt.show()
     return

@@ -172,7 +172,7 @@ def processingrawdata(data_old, restricted_features, train):
         lambda row: label_final_co2_law(row), axis=1
     )
 
-    if not restricted_features :
+    if not restricted_features or train :
         data_new["gics_group"] = data_new["gics_group"].astype(str)
         data_new["gics_sector"] = data_new["gics_sector"].astype(str)
         data_new["gics_ind"] = data_new["gics_ind"].astype(str)
@@ -519,8 +519,8 @@ def custom_train_split(
     path_intermediary,
     target,
     extended_features,
-    restricted_features=False,
-    selec_sect=["gics_sect", "gics_group", "gics_ind", "gics_sub_ind"],
+    restricted_features,
+    selec_sect,
 ):
     """
     This function performs a custom train-test split on a given dataset, preprocesses the data, selects relevant features, and returns the processed data and relevant features.
@@ -546,6 +546,7 @@ def custom_train_split(
 
     """
     try:
+        
         df_train = pd.read_parquet(path_intermediary + "df_train.parquet")
         df_test = pd.read_parquet(path_intermediary + "df_test.parquet")
 
