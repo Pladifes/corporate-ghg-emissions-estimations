@@ -16,14 +16,14 @@ pd.options.mode.chained_assignment = None
 
 def production_pipeline(
     restricted_features,
-    path_rawdata="data/raw_data/",
-    path_models="models/",
-    path_benchmark="benchmark/",
-    path_results="results/",
-    path_plot="results/plot/",
-    path_intermediary="data/intermediary_data/",
-    targets=["cf1_log", "cf2_log", "cf3_log", "cf123_log"],
-    models={"catboost": catboost_model},
+    path_rawdata,
+    path_models,
+    path_benchmark,
+    path_results,
+    path_plot,
+    path_intermediary,
+    targets,
+    models,
 ):
     """
     Apply the full pipeline to train and save models, allowing for reuse of models.
@@ -57,6 +57,27 @@ def production_pipeline(
     Note: This function is designed for a specific use case and may require additional context to understand its full functionality.
     """
     logging.info("Starting production pipeline")
+
+    #paths
+    path_rawdata = 'data/raw_data/'
+    path_benchmark = 'benchmark/'
+
+    if restricted_features == False:
+        path_intermediary = 'data/intermediary_data/unrestricted_features/'
+        path_models = 'models/unrestricted_features/'
+        path_results = 'results/unrestricted_features/'
+        path_plot = path_results +'plot/'
+
+    elif restricted_features == True:
+        path_intermediary = 'data/intermediary_data/restricted_features/'
+        path_models = 'models/restricted_features/'
+        path_results = 'results/restricted_features/'
+        path_plot = path_results +'plot/'
+
+    # Training parameters
+    targets=["cf1_log", "cf2_log", "cf3_log", "cf123_log"]
+    models={"catboost": catboost_model}
+
     if restricted_features:
         training_parameters = {
             "seed": 0,

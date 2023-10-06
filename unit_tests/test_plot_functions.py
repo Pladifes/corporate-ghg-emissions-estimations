@@ -46,7 +46,6 @@ class TestPlotRegion(unittest.TestCase):
         target = "Test Target"
         plot_path = "data/unit_test_data/results/plots/"
         region_colors = {"Region1": "red", "Region2": "blue", "Region3": "green"}
-
         plot_region(df, target, plot_path, region_colors)
         plot_file = plot_path + f"region_box_plot_{target}.png"
         self.assertTrue(os.path.exists(plot_file))
@@ -77,7 +76,6 @@ class TestPlotCountry(unittest.TestCase):
         }
 
         plot_country(df, target, plot_path, country_colors)
-
         plot_file = plot_path + f"country_box_plot_{target}.png"
         self.assertTrue(os.path.exists(plot_file))
         os.remove(plot_file)
@@ -97,7 +95,6 @@ class TestPlotIndustry(unittest.TestCase):
             "Industry2": "blue",
             "Industry3": "green",
         }
-
         plot_industry(df, target, plot_path, industry_colors)
         plot_file = plot_path + f"industry_box_plot_{target}.png"
         self.assertTrue(os.path.exists(plot_file))
