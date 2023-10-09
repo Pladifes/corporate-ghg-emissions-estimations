@@ -32,7 +32,7 @@ To deal with unreported companies, researchers and practitionners rely on estima
 - May not always be <b>accurate</b> (usually based on sectorial means),
 - Can be <b>expensive</b> (>10k $).
 
-**CGEE** (standing for corporate GHG emissions estimations) address these challenges, by leveraging the latest research and best practices to develop a open data science methodology that allows estimating GHG emissions (Scope1, Scope2, Scope 3 and Scope123) accurately using machine learning.
+**CGEE** (standing for corporate GHG emissions estimations) address these challenges, by leveraging the latest research and best practices to develop a open data science methodology that allows estimating GHG emissions (Scope 1, Scope 2, Scope 3 and Scope 123) accurately using machine learning.
 
 We plan to release an online calculator on our [dedicated website](https://pladifes.institutlouisbachelier.org/) in 2023 and already give free access to researchers to our <b>complete datasets</b>.
 
@@ -89,13 +89,11 @@ This will activate the virtual environment and you can start working with your i
 <mark>Advanced_Model_training.ipynb</mark> This notebook provides a comprehensive overview of the code execution and allows you to test the pipeline with different parameters.
 
 Both notebooks are divided into two main sections:
-- Training with Unrestricted Features: This section utilizes a wide range of open and proprietary data sources to build the models and .
+- Training with Unrestricted Features: This section utilizes a wide range of open and proprietary data sources to build the models on.
 
-- Training with Restricted Features (Forbes Data): This section uses the same data sources but with fewer features, making it suitable for sharing the final dataset for open data (Forbes2000)
+- Training with Restricted Features (Forbes Data): This section uses the same data sources but with fewer features.
 
-
-
-<mark>Unrestricted features</mark> This section utilizes a wide range of open and proprietary data sources to build the models :
+<mark>Unrestricted features</mark> This section utilizes a wide range of open and proprietary data sources to build the models:
 
 - International Energy Agency (<b>IEA</b>) [GHG emission data from energy data](https://www.iea.org/data-and-statistics/data-tools/greenhouse-gas-emissions-from-energy-data-explorer), including free fuel mix carbon intensity data.
 - [<b>Ember</b> Yearly Electricity data](https://ember-climate.org/data-catalogue/yearly-electricity-data/), emissions associated with electricity géneration.
@@ -103,9 +101,9 @@ Both notebooks are divided into two main sections:
 - <b>CDP</b> and <b>Refinitiv</b> data, proprietary data used for corporate financial, energy and emission data.
 
 
-<mark>Restricted features</mark> This section uses the same data sources but with fewer features, making it suitable for applying it on open data Forbes Global  2000
+<mark>Restricted features</mark> This section uses the same data sources but with fewer features. Using less features allows  for applying saved models on proposed Forbes 2000 data, to see how applications can be made. 
 
-- <b>Revenues, Profits and Sales</b>. Free shared dataset is based on the application of a pre-fitted model to the <b>Forbes Global 2000</b> data.
+
 
 
 <!-- ### <a id="pipeline"></a> Pipeline
@@ -114,7 +112,7 @@ Once the working environment has been successfully installed, the pipeline can b
 
 ## <a id="perfs"></a> Access to base models performances
 
-The methodology being used involves training four distinct models for each target, after which the model with the best performance, determined by its RMSE score on a pre-defined benchmark of companies not seen during training, is selected. This top-performing model is then saved as a pickle file (.pkl) in a folder called "models/"
+The methodology being used involves training four distinct models for each target. For each one, the model with the best RMSE score on a pre-defined out-of-sample set of companies is selected. This top-performing model is then saved as a pickle file (.pkl) in a folder called "models/".
 
 ## <a id="custom"></a> Models customization
 
