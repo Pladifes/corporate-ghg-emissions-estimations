@@ -4,6 +4,46 @@ from functions.merged_dataset_creation import create_preprocessed_dataset
 from functions.preprocessing import outliers_preprocess
 
 
+def assert_input_format(df):
+    """
+    Asserts whether the input DataFrame contains a minimum set of required columns.
+
+    This function checks whether the input DataFrame, 'df', contains a set of specific columns
+    that are essential for further processing. If any of these columns are missing, it raises
+    an AssertionError indicating that the input dataset does not meet the minimal required
+    column criteria.
+
+    Parameters:
+    df (pd.DataFrame): The input DataFrame to be checked for column presence.
+
+    Raises:
+    AssertionError: If the input DataFrame does not contain all the required columns.
+    """
+
+    mini = set(
+        [
+            "company_id",
+            "company_name",
+            "country_hq",
+            "gics_name",
+            "fiscal_year",
+            "revenue",
+            "ebit",
+            "asset",
+            "cf1",
+            "cf2",
+            "cf3",
+            "cf123",
+        ]
+    )
+
+    assert set(mini).intersection(set(df.columns)) == set(
+        mini
+    ), "input dataset does not contain minimal required columns"
+
+    return
+
+
 def load_data(
     path, filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
 ):
@@ -20,14 +60,6 @@ def load_data(
     Returns:
     - preprocessed_dataset (DataFrame): The loaded or constructed preprocessed dataset.
 
-    This function attempts to load a pre-downloaded preprocessed dataset from the specified path. If the dataset is not found, it constructs it from other source files and optionally saves it. The construction involves processing Refinitiv data, CarbonPricing data, IncomeGroup data, FuelIntensity data, and CDP data to create a preprocessed dataset.
-
-    After loading or constructing the dataset, it renames columns and creates additional columns for CF1, CF2, CF3, CF123, CDP_CF2, and country_sector.
-
-    If 'filter_outliers' is set to True, the function performs outlier removal on specific target columns using the provided thresholds.
-
-    Example usage:
-    data = load_data("data/", filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=True)
     """
     try:
         preprocessed_dataset = pd.read_parquet(
@@ -38,6 +70,7 @@ def load_data(
         print("File not found, constructing it")
 
         input_dataset = pd.read_parquet(path + "input_dataset.parquet")
+        assert_input_format(input_dataset)
         region_mapping = pd.read_excel(path + "country_region_mapping.xlsx")
         carbon_pricing = pd.read_csv(
             path + "carbon_pricing_preprocessed_2023.csv",

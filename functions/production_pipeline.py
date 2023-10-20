@@ -25,36 +25,32 @@ def production_pipeline(
     targets,
     models,
 ):
-    """
-    Apply the full pipeline to train and save models, allowing for reuse of models.
+        """
+    Apply a comprehensive pipeline for training machine learning models and saving them for future use.
 
     Parameters:
-    - restricted_features (list): A list of features to be restricted or excluded during model training.
+    - restricted_features (bool): Indicates whether to use restricted features during model training.
+    - path_rawdata (str): Directory containing raw data.
+    - path_models (str): Directory to save trained models.
+    - path_benchmark (str): Directory for benchmark data.
+    - path_results (str): Directory for storing results.
+    - path_plot (str): Directory for saving plot images.
+    - path_intermediary (str): Directory for intermediate data storage.
+    - targets (list of str): List of target variables to train models for.
+    - models (dict): Dictionary of model names and corresponding model functions.
 
-    This function applies a comprehensive pipeline for training machine learning models and saving them for future use.
-    The pipeline includes data loading, preprocessing, outlier removal, model training, and output generation.
+    Returns:
+    - None
 
-    Parameters:
-    - restricted_features (list): A list of feature names to be restricted or excluded during model training.
+    This function performs a complete machine learning pipeline, including data loading, preprocessing, outlier removal, model training, and result generation.
 
-    The function uses the following directories and settings for its operation:
-    - path_rawdata: Directory containing raw data.
-    - path_models: Directory where trained models will be saved.
-    - path_Benchmark: Directory for benchmark data.
-    - path_results: Directory for storing results.
-    - path_plot: Directory for saving plot images.
-    - path_intermediary: Directory for intermediate data storage.
+    The function adapts its behavior based on the 'restricted_features' flag. If it's set to True, it uses a different set of features and paths for data storage.
 
-    It trains models for the specified target variables and uses a dictionary of models, where the keys are model names
-    and the values are the corresponding model functions.
+    The 'targets' parameter specifies the target variables to train models for, and 'models' is a dictionary containing model names as keys and their corresponding model functions.
 
-    The 'training_parameters' dictionary includes various parameters for training, such as the random seed, the number of iterations,
-    and the list of extended features to use.
+    Training parameters are defined in the 'training_parameters' dictionary, including the random seed, the number of iterations, and the list of extended features to use for training. The 'cross_val' flag controls whether cross-validation is performed during training.
 
-    The function returns no explicit output but performs the entire pipeline, including loading the dataset, preprocessing,
-    removing outliers, training models, and generating results. The trained models and results are saved in the specified directories.
-
-    Note: This function is designed for a specific use case and may require additional context to understand its full functionality.
+    The function saves the trained models and results in the specified directories. The summary results and estimated scopes are also generated and saved.
     """
     logging.info("Starting production pipeline")
 

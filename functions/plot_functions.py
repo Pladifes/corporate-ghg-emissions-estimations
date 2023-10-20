@@ -8,9 +8,19 @@ def plot_detailed(rmses, target, plot_path, category):
     """
     Generate and save detailed plots based on the given category.
 
-    This function generates and saves plots based on the provided category. It uses a specific color palette for sectors
-    for consistency. The available categories are: "Revenuebucket", "Region", "Country", "Industry", "SubSector", "Year",
-    "ENEConsume", and "ENEProduce". If an unsupported category is provided, it prints an error message.
+    This function generates and saves plots based on the provided category using a specific color palette for sectors, ensuring consistency.
+    
+    Available categories are:
+    - "revenue_bucket"
+    - "region"
+    - "country"
+    - "industry"
+    - "sub_sector"
+    - "year"
+    - "energy_consumed"
+    - "energy_produced"
+
+    If an unsupported category is provided, the function prints an error message.
 
     Parameters:
     - rmses (list): A list of root mean square error values for each category.
@@ -19,7 +29,9 @@ def plot_detailed(rmses, target, plot_path, category):
     - category (str): The category for which the plot should be generated.
 
     Returns:
-    None
+    - None
+
+    This function acts as a dispatcher, calling specific plot functions based on the provided category, allowing for customized plotting based on the category's context.
     """
     sector_colors = ["#6FAA96", "#5AC2CC", "#D1E4F2", "#2E73A9", "#003f5c"]
     if category == "revenue_bucket":
@@ -49,10 +61,13 @@ def plot_revenue_bucket(rmses, target, plot_path, sector_colors):
     across different revenue buckets.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different revenue buckets.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping revenue buckets to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different revenue buckets.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping revenue buckets to their respective colors.
+
+    Returns:
+    - None
 
     """
     plt.figure(figsize=(10, 8))
@@ -73,10 +88,13 @@ def plot_region(rmses, target, plot_path, sector_colors):
     across different region.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different region.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping region to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different region.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping region to their respective colors.
+
+    Returns:
+    -None
 
     """
     plt.figure(figsize=(10, 8))
@@ -95,10 +113,13 @@ def plot_country(rmses, target, plot_path, sector_colors):
     across different countries.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different countries.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping countries to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different countries.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping countries to their respective colors.
+
+    Returns:
+    - None
 
     """
     countries_to_keep = (
@@ -124,10 +145,13 @@ def plot_industry(rmses, target, plot_path, sector_colors):
     across different industries.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different industries.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping industries to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different industries.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping industries to their respective colors.
+
+    Returns:
+    - None
 
     """
     plt.figure(figsize=(10, 8))
@@ -146,10 +170,13 @@ def plot_sub_sector(rmses, target, plot_path, sector_colors):
     across different sectors.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different sectors.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping sectors to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different sectors.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping sectors to their respective colors.
+
+    Returns:
+    - None
 
     """
     sectors_to_keep = (
@@ -179,10 +206,13 @@ def plot_year(rmses, target, plot_path, sector_colors):
     across different years.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different years.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping years to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different years.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping years to their respective colors.
+
+    Returns:
+    - None
 
     """
     plt.figure(figsize=(10, 8))
@@ -201,10 +231,13 @@ def plot_energy_consumed_log(rmses, target, plot_path, sector_colors):
     across different energy consumed.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different energy consumed.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping energy consumed to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different energy consumed.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping energy consumed to their respective colors.
+
+    Returns:
+    - None
 
     """
     plt.figure(figsize=(10, 8))
@@ -225,10 +258,13 @@ def plot_energy_produced_log(rmses, target, plot_path, sector_colors):
     across different energy produced.
 
     Parameters:
-        rmses (DataFrame): A DataFrame containing RMSE values for different energy produced.
-        target (str): The target variable for which RMSEs are being plotted.
-        plot_path (str): The path where the generated plot image will be saved.
-        sector_colors (dict): A dictionary mapping energy produced to their respective colors.
+    - rmses (DataFrame): A DataFrame containing RMSE values for different energy produced.
+    - target (str): The target variable for which RMSEs are being plotted.
+    - plot_path (str): The path where the generated plot image will be saved.
+    - sector_colors (dict): A dictionary mapping energy produced to their respective colors.
+
+    Returns:
+    - None
 
     """
     plt.figure(figsize=(10, 8))
@@ -243,6 +279,84 @@ def plot_energy_produced_log(rmses, target, plot_path, sector_colors):
     return
 
 
+def plot_shap_values(model, X, plot_path, target):
+    """
+    Generate and save a SHAP (SHapley Additive exPlanations) summary plot to visualize the feature importances of a model's predictions.
+
+    Parameters:
+    - model (object): The machine learning model for which you want to generate SHAP values and plot.
+    - X (pandas DataFrame or numpy array): The input data on which the model predictions and SHAP values will be calculated.
+    - plot_path (str): The path where the SHAP summary plot will be saved as an image file.
+    - target (str): A label or identifier for the target variable, which will be used in the filename of the saved plot.
+
+    Returns:
+    - None
+    """
+    explainer = shap.Explainer(model)
+    shap_values = explainer.shap_values(X)
+    explanation = shap.Explanation(
+        values=shap_values,
+        base_values=explainer.expected_value,
+        data=X,
+        feature_names=list(X.columns),
+    )
+    plt.figure()
+    shap.plots.beeswarm(explanation, show=False, color_bar=False)
+    plt.colorbar()
+    plt.savefig(plot_path + f"shap_{target}.png", bbox_inches="tight")
+    plt.close()
+    return
+
+
+def plot_y_test_y_pred(y_test, y_pred, plot_path, target):
+    """
+    Generate and save a scatter plot comparing actual values (y_test) and predicted values (y_pred).
+
+    Parameters:
+    - y_test (array-like): The actual target values.
+    - y_pred (array-like): The predicted target values.
+    - plot_path (str): The path where the scatter plot will be saved as an image file.
+    - target (str): A label or identifier for the target variable, which will be used in the filename of the saved plot.
+
+    Returns:
+    - None
+    """
+    plt.figure()
+    plt.scatter(y_test, y_pred)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "k--", lw=4)
+    plt.xlabel("Actual Values")
+    plt.ylabel("Predicted Values")
+    plt.title("Actual vs. Predicted Values")
+    plt.savefig(plot_path + f"y_test_y_pred_{target}.png", bbox_inches="tight")
+    plt.close()
+    return
+
+
+def plot_residuals(y_test, y_pred, plot_path, target):
+    """
+    Generate and save a residual plot to visualize the distribution of residuals (the differences between actual and predicted values).
+
+    Parameters:
+    - y_test (array-like): The actual target values.
+    - y_pred (array-like): The predicted target values.
+    - plot_path (str): The path where the residual plot will be saved as an image file.
+    - target (str): A label or identifier for the target variable, which will be used in the filename of the saved plot.
+
+    Returns:
+    - None
+    """
+    plt.figure()
+    residuals = y_test - y_pred
+    plt.scatter(y_pred, residuals)
+    plt.axhline(y=0, color="r", linestyle="-")
+    plt.title("Residual Plot")
+    plt.xlabel("Predicted Values")
+    plt.ylabel("Residuals")
+    plt.savefig(plot_path + f"residus_{target}.png", bbox_inches="tight")
+    plt.close()
+    return
+
+
 def plot(model, X, y_test, y_pred, plot_path, target):
     """
     This function generates three plots for evaluating the machine learning model's performance:
@@ -252,59 +366,18 @@ def plot(model, X, y_test, y_pred, plot_path, target):
     A residual plot showing the distribution of the difference between actual and predicted values.
 
     Parameters:
-    model: The trained machine learning model to be evaluated.
-    X: The feature matrix for the test dataset.
-    y_test: The ground truth labels for the test dataset.
-    y_pred: The predicted labels for the test dataset.
-    plot_path: The directory where the plots will be saved.
-    target: The name of the target variable.
+    - model: The trained machine learning model to be evaluated.
+    - X: The feature matrix for the test dataset.
+    - y_test: The ground truth labels for the test dataset.
+    - y_pred: The predicted labels for the test dataset.
+    - plot_path: The directory where the plots will be saved.
+    - target: The name of the target variable.
 
     Returns:
-    Plots saved in plot_path
+    - Plots saved in plot_path
     """
 
-    def plot_shap_values(model, X):
-        explainer = shap.Explainer(model)
-        shap_values = explainer.shap_values(X)
-        explanation = shap.Explanation(
-            values=shap_values,
-            base_values=explainer.expected_value,
-            data=X,
-            feature_names=list(X.columns),
-        )
-        plt.figure()
-        shap.plots.beeswarm(explanation, show=False, color_bar=False)
-        plt.colorbar()
-        plt.savefig(plot_path + f"shap_{target}.png", bbox_inches="tight")
-        plt.close()
-        return
-
-    def plot_y_test_y_pred(y_test, y_pred):
-        plt.figure()
-        plt.scatter(y_test, y_pred)
-        plt.plot(
-            [y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "k--", lw=4
-        )
-        plt.xlabel("Actual Values")
-        plt.ylabel("Predicted Values")
-        plt.title("Actual vs. Predicted Values")
-        plt.savefig(plot_path + f"y_test_y_pred_{target}.png", bbox_inches="tight")
-        plt.close()
-        return
-
-    def plot_residuals(y_test, y_pred):
-        plt.figure()
-        residuals = y_test - y_pred
-        plt.scatter(y_pred, residuals)
-        plt.axhline(y=0, color="r", linestyle="-")
-        plt.title("Residual Plot")
-        plt.xlabel("Predicted Values")
-        plt.ylabel("Residuals")
-        plt.savefig(plot_path + f"residus_{target}.png", bbox_inches="tight")
-        plt.close()
-        return
-
-    plot_shap_values(model, X)
-    plot_y_test_y_pred(y_test, y_pred)
-    plot_residuals(y_test, y_pred)
+    plot_shap_values(model, X, plot_path, target)
+    plot_y_test_y_pred(y_test, y_pred, plot_path, target)
+    plot_residuals(y_test, y_pred, plot_path, target)
     return

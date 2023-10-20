@@ -28,68 +28,37 @@ def training_pipeline(
     Apply a training pipeline for imputed targets, models, and parameters.
 
     This function performs a machine learning training pipeline on the provided data and settings.
+    This function is a comprehensive training pipeline for machine learning models to predict target variables. It includes the following steps:
+
+    1. Data Splitting: Splits the preprocessed dataset into training and testing sets for the given target variable.
+    2. Model Training: Iterates over the provided machine learning models, trains each model, and evaluates its performance using RMSE (Root Mean Square Error).
+    3. Model Selection: Selects the best-performing model based on the lowest RMSE.
+    4. Feature Analysis: Conducts detailed feature analysis and visualization for the selected model.
+    5. Results Saving: Optionally saves the results, trained models, and visualizations to specified directories if 'save' is set to True.
 
     Parameters:
-    -----------
-    path_Benchmark : str
-        The path to the benchmark dataset.
-
-    path_results : str
-        The path where the results will be saved.
-
-    path_models : str
-        The path where trained models will be saved.
-
-    path_intermediary : str
-        The path for storing intermediary data.
-
-    path_plot : str
-        The path for saving plots and visualizations.
-
-    targets : list
-        A list of target variables to predict.
-
-    models : dict
-        A dictionary of machine learning models to use in the pipeline, where keys are model names
+    - path_Benchmark : The path to the benchmark dataset.
+    - path_results : The path where the results will be saved.
+    - path_models : The path where trained models will be saved.
+    - path_intermediary : The path for storing intermediary data.
+    - path_plot : The path for saving plots and visualizations.
+    - targets : A list of target variables to predict.
+    - models : A dictionary of machine learning models to use in the pipeline, where keys are model names
         and values are corresponding model classes or functions.
-
-    Summary_Final : dict
-        A summary dictionary for storing final results.
-
-    ensemble : list
-        A list to store trained model instances.
-
-    summary_metrics_detailed : dict
-        A summary dictionary for detailed metrics.
-
-    estimated_scopes : dict
-        A dictionary to store estimated scopes.
-
-    preprocessed_dataset : pd.DataFrame
-        The preprocessed dataset containing input features and target variables.
-
-    training_parameters : dict
-        A dictionary containing training parameters such as 'extended_features', 'selec_sect', 'seed', 'n_iter', etc.
-
-    restricted_features : bool, optional
-        Whether to use restricted features during training (default is False).
-
-    save : bool, optional
-        Whether to save the results and trained models (default is False).
+    - Summary_Final : A summary dictionary for storing final results.
+    - ensemble : A list to store trained model instances.
+    - summary_metrics_detailed : A summary dictionary for detailed metrics.
+    - estimated_scopes : A dictionary to store estimated scopes.
+    - preprocessed_dataset :The preprocessed dataset containing input features and target variables.
+    - training_parameters :A dictionary containing training parameters such as 'extended_features', 'selec_sect', 'seed', 'n_iter', etc.
+    - restricted_features : Whether to use restricted features during training (default is False).
+    - save : Whether to save the results and trained models (default is False).
 
     Returns:
-    --------
-    best_scores : list
-        A list of the best RMSE scores achieved for each target variable.
-
-    best_stds : list
-        A list of the standard deviations corresponding to the best RMSE scores.
-
-    summary_global : dict
-        A summary dictionary for global metrics.
-
-    summary_metrics_detailed : dict
-        Updated summary dictionary for detailed metrics after the training process.
+    - best_scores : A list of the best RMSE scores achieved for each target variable.
+    - best_stds : A list of the standard deviations corresponding to the best RMSE scores.
+    - summary_global : A summary dictionary for global metrics.
+    - summary_metrics_detailed : Updated summary dictionary for detailed metrics after the training process.
     """
     best_scores = []
     best_stds = []
@@ -99,13 +68,7 @@ def training_pipeline(
         start_time = time.time()
         test_scores = []
         test_stds = []
-        (
-            X_train,
-            y_train,
-            X_test,
-            y_test,
-            df_test,
-        ) = custom_train_split(
+        (X_train, y_train, X_test, y_test, df_test,) = custom_train_split(
             preprocessed_dataset,
             path_benchmark,
             path_intermediary,
@@ -129,7 +92,9 @@ def training_pipeline(
                 seed=seed,
             )
             y_pred = model_i.predict(X_test)
-            summary_global, rmse, std = metrics(y_test, y_pred, summary_final, target, model_name)
+            summary_global, rmse, std = metrics(
+                y_test, y_pred, summary_final, target, model_name
+            )
             ensemble.append(model_i)
             test_scores.append(rmse)
             test_stds.append(std)
@@ -144,28 +109,6 @@ def training_pipeline(
         if save:
             best_model_index = test_scores.index(min(test_scores))
             best_model = ensemble[best_model_index]
-
-            # index_ini = df_test.index
-            # df_test = df_test.merge(
-            #     preprocessed_dataset[["company_id", "fiscal_year", "gics_name", "region", "country_hq"]],
-            #     on=["company_id", "fiscal_year"],
-            #     how="left",
-            # )
-            # if not restricted_features:
-            #     df_test = df_test.merge(
-            #         preprocessed_dataset[
-            #             [
-            #                 "company_id",
-            #                 "fiscal_year",
-            #                 "energy_consumed",
-            #                 "energy_produced",
-            #             ]
-            #         ],
-            #         on=["company_id", "fiscal_year"],
-            #         how="left",
-            #     )
-            # df_test.index = index_ini
-
             summary_metrics_detailed, estimated_scopes, lst = best_model_analysis(
                 best_model,
                 X_test,
@@ -182,6 +125,8 @@ def training_pipeline(
                 path_models,
             )
     if save:
-        results(estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst)
+        results(
+            estimated_scopes, path_results, summary_metrics_detailed, summary_final, lst
+        )
 
     return best_scores, best_stds, summary_global, summary_metrics_detailed
