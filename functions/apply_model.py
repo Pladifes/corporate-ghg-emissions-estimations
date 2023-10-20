@@ -16,16 +16,24 @@ def apply_model_on_forbes_data(
 ):
     """
     Apply pre-saved machine learning models to Forbes data to predict scope 1, 2, and 3 emissions.
+    The function uses the following steps:
+    1. Data Reading: Load Forbes data and supplementary datasets such as carbon pricing, income group, fuel intensity, and region mapping.
+    2. Data Preprocessing: Renames and cleans columns in the Forbes dataset for compatibility with the prediction process.
+    3. Data Merging: Combines Forbes data with the supplementary datasets to enrich the dataset with additional information.
+    4. Missing Data Handling: Fills missing values in the "fuel_intensity" column with the median value.
+    5. Emissions Prediction: Utilizes pre-trained machine learning models for each scope (cf1, cf2, cf3, and cf123) to estimate emissions and appends the results as new columns in the Forbes DataFrame.
+    6. Calculate Total Emissions: Computes the total emissions by summing the estimated emissions for cf1, cf2, and cf3, and appends this as a new column.
+    7. Optional Saving: If the 'save' parameter is set to True, the results, including the estimated emissions, are saved to an Excel file in the specified 'path_results' directory.
 
     Parameters:
-        path_rawdata (str, optional): Path to the directory containing raw data files. Defaults to "data/raw_data/".
-        path_results (str, optional): Path to the directory where the results will be saved. Defaults to "results/".
-        path_intermediary (str, optional): Path to the directory containing intermediary data. Defaults to "data/intermediary_data/".
-        path_models (str, optional): Path to the directory containing pre-saved machine learning models. Defaults to "models/".
-        save (bool, optional): If True, save the results to an Excel file. Defaults to False.
+    - path_rawdata (str, optional): Path to the directory containing raw data files. Defaults to "data/raw_data/".
+    - path_results (str, optional): Path to the directory where the results will be saved. Defaults to "results/".
+    - path_intermediary (str, optional): Path to the directory containing intermediary data. Defaults to "data/intermediary_data/".
+    - path_models (str, optional): Path to the directory containing pre-saved machine learning models. Defaults to "models/".
+    - save (bool, optional): If True, save the results to an Excel file. Defaults to False.
 
     Returns:
-        pandas.DataFrame: A DataFrame containing Forbes data with additional columns for estimated emissions.
+    - pandas.DataFrame: A DataFrame containing Forbes data with additional columns for estimated emissions.
 
     """
     df_forbes = pd.read_excel(path_rawdata + "forbes_2007_2022_completed.xlsx")

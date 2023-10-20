@@ -10,13 +10,17 @@ def merge_datasets(
     region_mapping,
 ):
     """
-    This function merges several DataFrames containing different types of data related to companies. The merged DataFrame includes columns from each input DataFrame as well as newly created columns.
+    Merge multiple DataFrames containing diverse company-related data. The resulting DataFrame combines columns from each input DataFrame and introduces new columns.
 
-    :param Refinitiv_data: A DataFrame containing financial data.
-    :param carbon_pricing_transposed: A DataFrame containing information on carbon pricing for countries and fiscal years.
-    :param income_group_transposed: A DataFrame containing information on the income group of countries and fiscal years.
-    :param fuel_intensity_transposed: A DataFrame containing information on the fuel intensity of countries and fiscal years.
-    :return: The merged DataFrame containing data from all input DataFrames and newly created columns.
+    Parameters:
+    - input_dataset (DataFrame): Financial data for companies.
+    - carbon_pricing (DataFrame): Information on carbon pricing for countries and fiscal years.
+    - income_group (DataFrame): Information on the income group of countries and fiscal years.
+    - fuel_intensity (DataFrame): Information on the fuel intensity of countries and fiscal years.
+    - region_mapping (DataFrame): Mapping of countries to regions.
+
+    Returns: 
+    - df_merged (DataFrame): The merged DataFrame containing data from all input DataFrames and newly created columns.
     """
     df = pd.merge(
         input_dataset,
@@ -51,13 +55,17 @@ def add_variables(df):
     """
     This function takes a DataFrame 'df' and calculates three financial ratios using the columns in the DataFrame. The ratios are:
 
+    
     Age: The age of a company, calculated as the ratio of Gross Property, Plant and Equipment (GPPE) to the difference between Earnings Before Interest, Taxes, Depreciation, and Amortization (ebitDA) and Earnings Before Interest and Taxes (ebit). If the denominator is 0, Age is set to NaN.
     CapInten: The capital intensity of a company, calculated as the ratio of Net Property, Plant, and Equipment (NPPE) to revenue. If the denominator is 0, CapInten is set to NaN.
     Leverage: The leverage of a company, calculated as the ratio of Long-Term Debt (LTDebt) to Total assets (asset). If the denominator is 0, Leverage is set to NaN.
     The function replaces any values of 'inf' in the calculated ratios with NaN. The modified DataFrame is then returned.
 
-    :param df: A DataFrame containing the necessary columns to calculate the financial ratios.
-    :return: The modified DataFrame with the calculated ratios.
+    Parameters:    
+    - df: A DataFrame containing the necessary columns to calculate the financial ratios.
+    
+    Returns: 
+    - The modified DataFrame with the calculated ratios.
     """
     df["age"] = df["gppe"] / (df["ebitda"] - df["ebit"])
     df["age"] = df["age"].replace(np.inf, np.nan)
@@ -71,16 +79,26 @@ def add_variables(df):
 
 
 def initial_preprocessing(df):
+    
     """
-    A function to perform initial preprocessing on a pandas DataFrame.
+    This function performs a series of data preprocessing tasks, including the addition of variables, data cleaning, and imputation. Some of the main steps include:
+    - Adding variables to the DataFrame.
+    - Removing rows with missing values in specific columns ('revenue' and 'gics_sub_ind').
+    - Handling outliers in columns ('gmar', 'age', 'leverage', 'accu_dep').
+    - Standardizing the 'fiscal_year' column data type to integer.
+    - Imputing missing values in 'fuel_intensity' based on median values per fiscal year.
+    - Assigning specific values to 'income_group' for 'Guernsey' and 'Jersey' in 'country_hq'.
+    - Handling missing values in 'cf123' based on 'cf1', 'cf2', and 'cf3'.
+    - Setting 'cf1' to the minimum positive value for rows where 'cf1' is zero.
 
-    Args:
-    df (pandas.DataFrame): A pandas DataFrame containing the data.
-    target (str): The target variable to be used in the analysis.
+    Parameters:
+    - df (pandas.DataFrame): A pandas DataFrame containing the data to be preprocessed.
 
     Returns:
-    pandas.DataFrame: A preprocessed DataFrame.
+    - pandas.DataFrame: The preprocessed DataFrame.
+
     """
+
     df = add_variables(df)
 
     df.dropna(subset=["revenue", "gics_sub_ind"], inplace=True)
@@ -120,24 +138,23 @@ def create_preprocessed_dataset(
     Creates a merged dataset from multiple data sources and performs preprocessing steps on it.
 
     This function integrates data from the following sources:
-    - 'Refinitiv_data': The primary dataset containing financial and economic information.
-    - 'CarbonPricing': Carbon pricing data after preprocessing.
-    - 'IncomeGroup': Income group data after preprocessing.
-    - 'FuelIntensity': Data related to fuel intensity.
-    - 'CDP': CDP dataset after preprocessing.
+    - 'input_dataset': The primary dataset containing financial and economic information.
+    - 'carbon_pricing': Carbon pricing data after preprocessing.
+    - 'income_group': Income group data after preprocessing.
+    - 'fuel_intensity': Data related to fuel intensity.
 
     The function applies the following steps:
-    1. Transforms and preprocesses 'CarbonPricing' data.
-    2. Transforms and preprocesses 'IncomeGroup' data.
+    1. Transforms and preprocesses 'carbon_pricing' data.
+    2. Transforms and preprocesses 'income_group' data.
     3. Preprocesses 'CDP' data.
     4. Merges all datasets into 'df_merged'.
     5. Performs initial preprocessing on 'df_merged' using 'initial_preprocessing'.
 
     Parameters:
-    - Refinitiv_data (DataFrame): The primary dataset containing financial and economic information.
-    - CarbonPricing (DataFrame): Carbon pricing data.
-    - IncomeGroup (DataFrame): Income group data.
-    - FuelIntensity (DataFrame): Data related to fuel intensity.
+    - input_dataset (DataFrame): The primary dataset containing financial and economic information.
+    - carbon_pricing (DataFrame): Carbon pricing data.
+    - income_group (DataFrame): Income group data.
+    - fuel_intensity (DataFrame): Data related to fuel intensity.
     - CDP (DataFrame): CDP dataset.
 
     Returns:

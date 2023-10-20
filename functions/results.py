@@ -19,28 +19,31 @@ def summary_detailed(
     X_test, y_test, y_pred, df_test, target, restricted_features, path_plot
 ):
     """
-    Generates a summary of the model performance by sector and region for a given target variable.
+    Generates a detailed summary of the model performance by various categories such as sector, region, country, etc., for a given target variable.
 
-    Args:
-        X_test: A pandas DataFrame containing the test set features.
-        y_pred: A numpy array with the predicted values for the target variable.
-        y_test: A numpy array with the actual values of the target variable for the test set.
-        df_test: A pandas DataFrame containing the test set features and additional information
-            about the sectors and regions of the observations.
-        target: A string with the name of the target variable column in the DataFrames.
+    The function calculates and reports performance metrics like Root Mean Squared Error (RMSE), Mean Squared Error (MSE),
+    Mean Absolute Error (MAE), Mean Absolute Percentage Error (MAPE), R-squared (R2), and Standard Deviation for each category.
+    It also generates and saves plots for the detailed analysis of each category's performance.
+
+    Note:
+    - The categories considered for analysis may vary based on the presence of restricted features in the model.
+    - Plots are saved in the specified 'path_plot' directory.
+
+    Parameters:
+    - X_test (pandas DataFrame): A DataFrame containing the test set features.
+    - y_test (numpy array): An array with the actual values of the target variable for the test set.
+    - y_pred (numpy array): An array with the predicted values for the target variable.
+    - df_test (pandas DataFrame): A DataFrame containing the test set features and additional information
+        about the sectors, regions, and other categories of the observations.
+    - target (str): The name of the target variable column in the DataFrames.
+    - restricted_features (list): A list of restricted features to be considered in the analysis.
+    - path_plot (str): The path where plots and visualizations will be saved.
 
     Returns:
-        A pandas DataFrame with the summary statistics of the model performance by sector and region.
-        The DataFrame contains the following columns:
-        - 'category',
-        - 'category_name',
-        - 'RMSE',
-        - 'MSE',
-        - 'MAE',
-        - 'MAPE',
-        - "R2",
-        - scope"
+    - pandas DataFrame: A summary of the model performance by various categories. The DataFrame includes
+        columns such as 'category', 'category_name', 'RMSE', 'MSE', 'MAE', 'MAPE', 'R2', and 'StandardDeviation'.
     """
+
     n_split = 10
     summary_region_sector = pd.DataFrame()
     deciles = pd.qcut(df_test["revenue"], 10, labels=False)
@@ -168,19 +171,20 @@ def scopes_report(
     path_models,
 ):
     """
-    This function generates a report of estimated scopes based on a provided dataset, features, target, and best model.
+    This function generates a report of estimated scopes based on a provided dataset, target variable, best model, and additional parameters.
 
     Parameters:
+    - dataset (pandas DataFrame): The dataset containing the relevant data for scope estimation.
+    - target (str): The column name from the dataset to be used as the target variable in the model.
+    - best_model (sklearn model object): The best-fit model object for the given dataset and features.
+    - estimated_scopes (list): A list containing the estimated scopes for each dataset.
+    - path_intermediary (str): The path to the intermediary files used in data processing.
+    - restricted_features (list): A list of column names to be excluded as restricted features.
+    - path_models (str): The path to store the trained model.
 
-    dataset (pandas DataFrame): The dataset containing the relevant data for scope estimation
-    features (list): A list of column names from the dataset to be used as the features in the model
-    target (str): The column name from the dataset to be used as the target variable in the model
-    best_model (sklearn model object): The best-fit model object for the given dataset and features
-    estimated_scopes (list): A list containing the estimated scopes for each dataset
-    lst (list): A list of column names to be included in the final dataset summary
     Returns:
-
-    estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary
+    - estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary.
+    - lst (list): A list of column names to be included in the final dataset summary.
     """
     features = pd.read_csv(path_intermediary + "features.csv")
     features = features["features"].to_list()
@@ -222,17 +226,19 @@ def metrics(y_test, y_pred, summary_final, target, model_name, n_split=10):
     Root mean squared error (RMSE), which is the square root of the MSE.
     Mean absolute percentage error (MAPE), which measures the percentage difference between the predicted and actual values.
     Standard deviation (STD), which measures the spread of the difference between the predicted and actual values.
+
     Parameters:
+    - y_test: The ground truth labels for the test dataset.
+    - y_pred: The predicted labels for the test dataset.
+    - summary_final: A list to store the summary of evaluation metrics for all models and targets.
+    - target: The name of the target variable.
+    - model_name: The name of the machine learning model.
+    - n_split: The number of splits to calculate RMSE (root mean squared error) across different segments of the dataset. Defaults to 10.
 
-    y_test: The ground truth labels for the test dataset.
-    y_pred: The predicted labels for the test dataset.
-    summary_final: A list to store the summary of evaluation metrics for all models and targets.
-    target: The name of the target variable.
-    model_name: The name of the machine learning model.
     Returns:
-
-    summary_global: A pandas dataframe that contains the summary of evaluation metrics for all models and targets.
-    rmse: The root mean squared error (RMSE) value.
+    - summary_global: A pandas dataframe that contains the summary of evaluation metrics for all models and targets.
+    - rmse: The root mean squared error (RMSE) value.
+    - std: The standard deviation of RMSE values.
 
     """
     r2 = r2_score(y_test, y_pred)
@@ -286,27 +292,25 @@ def best_model_analysis(
     Analyze the performance of the best machine learning model and generate a detailed report.
 
     Parameters:
-        best_model (object): The trained machine learning model that performed the best.
-        X_test (DataFrame): The feature matrix of the test dataset.
-        X_train (DataFrame): The feature matrix of the training dataset.
-        y_test (Series): The true target values of the test dataset.
-        df_test (DataFrame): The test dataset.
-        target (str): The name of the target variable.
-        path_plot (str): The path to save generated plots and visualizations.
-        dataset (str): The name or description of the dataset.
-        path_intermediary (str): The path for storing intermediate analysis results.
-        summary_metrics_detailed (DataFrame): A DataFrame containing summary metrics for multiple models.
-        estimated_scopes (DataFrame): A DataFrame containing estimated scopes for models.
-        restricted_features (list): List of restricted features used in modeling.
-        path_models (str): The path to save model files.
+    - best_model (object): The trained machine learning model that performed the best.
+    - X_test (DataFrame): The feature matrix of the test dataset.
+    - X_train (DataFrame): The feature matrix of the training dataset.
+    - y_test (Series): The true target values of the test dataset.
+    - df_test (DataFrame): The test dataset.
+    - target (str): The name of the target variable.
+    - path_plot (str): The path to save generated plots and visualizations.
+    - dataset (str): The name or description of the dataset.
+    - path_intermediary (str): The path for storing intermediate analysis results.
+    - summary_metrics_detailed (DataFrame): A DataFrame containing summary metrics for multiple models.
+    - estimated_scopes (DataFrame): A DataFrame containing estimated scopes for models.
+    - restricted_features (list): List of restricted features used in modeling.
+    - path_models (str): The path to save model files.
 
     Returns:
-        summary_metrics_detailed (DataFrame): Updated summary metrics including the analysis of the best model.
-        estimated_scopes (DataFrame): Updated estimated scopes after analyzing the best model.
+    - summary_metrics_detailed (DataFrame): Updated summary metrics including the analysis of the best model.
+    - estimated_scopes (DataFrame): Updated estimated scopes after analyzing the best model.
         lst (list): List of additional analysis results or information.
 
-    This function evaluates the best machine learning model's performance on the test dataset,
-    generates relevant plots, computes detailed metrics, and updates the summary and scope information.
 
     """
     y_pred_best = best_model.predict(X_test)
@@ -319,14 +323,14 @@ def best_model_analysis(
     )
     # if not restricted_features:
     estimated_scopes, lst = scopes_report(
-            dataset,
-            target,
-            best_model,
-            estimated_scopes,
-            path_intermediary,
-            restricted_features=restricted_features,
-            path_models=path_models,
-        )
+        dataset,
+        target,
+        best_model,
+        estimated_scopes,
+        path_intermediary,
+        restricted_features=restricted_features,
+        path_models=path_models,
+    )
     return summary_metrics_detailed, estimated_scopes, lst
 
 
@@ -337,14 +341,14 @@ def results(
     Save the estimated scopes, summary metrics, and a summary report as files in the specified path.
 
     Parameters:
-    estimated_scopes (list): List of DataFrames containing the estimated scopes.
-    path_results (str): Path where the output files will be saved.
-    summary_metrics (DataFrame): DataFrame containing detailed summary metrics.
-    summary_final (DataFrame): DataFrame containing summary metrics.
-    lst (list): List of column names to merge DataFrames on.
+    - estimated_scopes (list): List of DataFrames containing the estimated scopes.
+    - path_results (str): Path where the output files will be saved.
+    - summary_metrics (DataFrame): DataFrame containing detailed summary metrics.
+    - summary_final (DataFrame): DataFrame containing summary metrics.
+    - lst (list): List of column names to merge DataFrames on.
 
     Returns:
-    None: This function doesn't return any values, it only saves files to the specified path.
+    - None: This function doesn't return any values, it only saves files to the specified path.
     """
     nb_targets = len(estimated_scopes)
     merged_estimated_scopes = estimated_scopes[0]
@@ -374,10 +378,10 @@ def gics_to_name(gics_sector):
     Converts a GICS (Global Industry Classification Standard) sector code into the corresponding sector name.
 
     Parameters:
-        gics_sector (float): The GICS sector code to be converted.
+    - gics_sector (float): The GICS sector code to be converted.
 
     Returns:
-        str: The name of the GICS sector corresponding to the input code. If the input code does not match
+    - str: The name of the GICS sector corresponding to the input code. If the input code does not match
              any known GICS sector, the input code itself is returned as a string.
     """
 

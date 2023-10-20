@@ -12,12 +12,12 @@ def target_preprocessing(df, target):
     """
     A function to perform a target specific preprocessing on a pandas DataFrame.
 
-    Args:
-    df (pandas.DataFrame): A pandas DataFrame containing the data.
-    target (str): The target variable to be used in the analysis.
+    Parameters:
+    - df (pandas.DataFrame): A pandas DataFrame containing the data.
+    - target (str): The target variable to be used in the analysis.
 
     Returns:
-    pandas.DataFrame: A preprocessed DataFrame.
+    - pandas.DataFrame: A preprocessed DataFrame.
     """
     if target == "cf1_log":
         df = df[df["fiscal_year"] >= 2005]
@@ -42,13 +42,18 @@ def target_preprocessing(df, target):
 
 def df_split(df, path_benchmark):
     """
-    This function takes a pandas DataFrame and splits it into two parts based on whether the "Name" column of each row is in a benchmark list of company names.
+    Split a pandas DataFrame into two parts based on company names.
 
     Parameters:
-        - df (pandas DataFrame): The DataFrame to split.
+    - df (pandas DataFrame): The DataFrame to be split.
+    - path_benchmark (str): The path to the benchmark file containing a list of company names.
 
     Returns:
-        - tuple of pandas DataFrames: A tuple containing two DataFrames. The first DataFrame contains rows from the input DataFrame that do not have a "Name" value in the benchmark list, and the second DataFrame contains rows from the input DataFrame that do have a "Name" value in the benchmark list.
+    - tuple of pandas DataFrames: A tuple containing two DataFrames. The first DataFrame includes rows from the input DataFrame with company names not found in the benchmark list, and the second DataFrame includes rows with company names found in the benchmark list.
+
+    This function splits the input DataFrame into two based on the presence of company names in a benchmark list. Rows with company names found in the benchmark list are included in the second DataFrame, while rows with company names not in the benchmark list are included in the first DataFrame.
+
+    If the benchmark file is not found, the function randomly selects 20% of the data as a test set and ensures that test sectors are also present in the training set.
     """
     try:
         benchmark = pd.read_csv(path_benchmark + "lst_companies_test_gics_2023.csv")
@@ -72,7 +77,7 @@ def set_columns(df, features):
     """
     Align the column names of two pandas DataFrames and replace special characters in column names with underscores.
 
-    Args:
+    Parameters:
     - df_train: pandas DataFrame, containing training data.
     - df_test: pandas DataFrame, containing testing data.
 
@@ -91,16 +96,25 @@ def set_columns(df, features):
 
 def logtransform(df, ls, path_results, train):
     """
-    This function calculates the base-10 logarithm of the values of keys in the given dictionary for the corresponding keys in the given list and returns the updated dictionary.
+    Calculate the base-10 logarithm of selected columns in a DataFrame and return the updated DataFrame.
+
+    This function calculates the logarithm of base 10 for the values in the selected columns.
+    If 'train' is True, the minimum values of these columns are saved to a CSV file for later use.
+    If 'train' is False, the function retrieves the minimum values from the CSV file and uses them for transformation.
+
+    Note:
+    - Logarithmic transformation is applied as log10(x) for each specified column in 'ls'.
+    - A minimum value is subtracted from the column before the transformation to ensure positive results.
+    - If a column has values less than the minimum (which can occur due to transformation with 'train' as False), the logarithm is set to zero.
 
     Parameters:
-    res (dict): The dictionary in which the logarithm needs to be calculated.
-    ls (list): The list of keys whose corresponding values need to be logged.
-    path_results (str): The path to save the output csv file.
-    train (bool, optional): Flag indicating if the function is being used for training or testing. Default is True.
+    - df (pandas DataFrame): The input DataFrame containing the data to be transformed.
+    - ls (list of str): A list of column names to be logarithmically transformed.
+    - path_results (str): The path to save the output CSV file containing minimum values for each transformed column.
+    - train (bool, optional): A flag indicating if the function is being used for training (default is True).
 
     Returns:
-    dict: The dictionary with updated values.
+    - df (pandas DataFrame): The DataFrame with specified columns logarithmically transformed.
     """
     res = df.copy()
     columns_min = []
@@ -144,10 +158,10 @@ def label_final_co2_law(row):
     This function applies a label to a row in a pandas DataFrame based on the values in the "CO2Law", "CO2Status", and "CO2Coverage" columns.
 
     Parameters:
-    row (pandas.Series): The row to be labeled.
+   -  row (pandas.Series): The row to be labeled.
 
     Returns:
-    str: The label for the row.
+    - str: The label for the row.
 
     """
     if row["co2_law"] == "Yes" and row["co2_status"] == "Implemented":
@@ -160,12 +174,22 @@ def processingrawdata(data_old, restricted_features, train):
     """
     Process raw data by applying various transformations and generating dummy variables.
 
+    This function applies data processing and encoding to the input DataFrame, generating dummy variables for categorical features and ordinal encoding for certain variables. It also handles missing values and ensures that data types are appropriately formatted.
+
+    If 'restricted_features' is False, the function generates dummy variables for 'gics_sector', 'gics_group', 'gics_ind', and 'gics_sub_ind' columns to represent categorical information.
+
+    If 'train' is True, the function encodes the 'income_group' and 'final_co2_law' columns using ordinal encoding and creates new columns for the encoded values.
+
+    Note:
+    - The specific encoding and dummy variable generation may vary based on the presence of restricted features.
+    
     Parameters:
-    - data_old (pandas DataFrame): the raw data to be processed.
-    - restricted_features (bool): if True, the data is open data.
+    - data_old (pandas DataFrame): The raw data to be processed.
+    - restricted_features (bool): A flag indicating whether restricted features are applied.
+    - train (bool): A flag indicating whether the data is part of the training set.
 
     Returns:
-    - data_new (pandas DataFrame): the processed data, with new columns generated for ordinal encoded variables.
+    - data_new (pandas DataFrame): The processed data with transformed and encoded columns.
     """
     data_new = data_old.copy()
     data_new["final_co2_law"] = data_new.apply(
@@ -217,12 +241,26 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     Fill in missing values in a pandas DataFrame by using the mean of the corresponding group values.
 
+    This function fills missing values in the input DataFrame by utilizing the mean values of corresponding groups based on certain criteria.
+
+    If 'train' is set to True, the function calculates the means for specified 'columnlist' within groups defined by 'gics_sub_ind' and 'revenue' percentiles. The calculated means are stored in a dictionary and saved to a JSON file in the 'path_intermediary' directory.
+
+    If 'train' is False, the function retrieves the means from the saved JSON file and uses them to fill missing values in 'columnlist' based on the 'gics_sub_ind' and 'revenue' percentiles.
+
+    Note:
+    - The function handles missing values by grouping data based on 'gics_sub_ind' and 'revenue' percentiles and filling missing values with the mean of the corresponding group.
+    - The specific columns in 'columnlist' may vary based on the application.
+    - The 'path_intermediary' is used to store and retrieve intermediary files for data processing.
+
+    
     Parameters:
-    - data_old (pandas DataFrame): the data to be processed.
-    - columnlist (list of strings): a list of column names for which missing values should be filled.
+    - data_old (pandas DataFrame): The input data to be processed.
+    - columnlist (list of strings): A list of column names for which missing values should be filled.
+    - path_intermediary (str): The path to intermediary files used in data processing.
+    - train (bool): A boolean flag indicating whether the data is part of the training set.
 
     Returns:
-    - data_new (pandas DataFrame): the processed data with missing values filled in.
+    - data_new (pandas DataFrame): The processed data with missing values filled in.
     """
     data_new = data_old.copy()
     if train:
@@ -362,14 +400,14 @@ def encoding(df, path_intermediary, train, restricted_features):
     7. Resets the index of the resulting dataframe to start from 0.
 
     Parameters:
-    -----------
-    df:pandas.DataFrame
-        Input dataframe to be processed and encoded.
+    - df (pandas DataFrame): The DataFrame to be processed and encoded.
+    - path_intermediary (str): The path to intermediary files used in data processing.
+    - train (bool): A boolean flag indicating whether the data is part of the training set.
+    - restricted_features (bool): A boolean flag indicating whether restricted features are used in the model.
 
     Returns:
-    --------
-    df:pandas.DataFrame
-        Encoded and processed dataframe.
+    - df (pandas DataFrame): The encoded and processed DataFrame ready for modeling.
+
     """
     if restricted_features:
         FillList = ["asset", "ebit"]
@@ -444,11 +482,11 @@ def selected_features(
     """
     Selects a set of features from a pandas DataFrame.
 
-    Args:
-        df (pandas.DataFrame): A pandas DataFrame containing the data.
+    Parameters:
+    - df (pandas.DataFrame): A pandas DataFrame containing the data.
 
     Returns:
-        list: A list of selected features as strings.
+    - list: A list of selected features as strings.
     """
     df = pd.concat([df_train, df_test])
 
@@ -477,14 +515,11 @@ def outliers_preprocess(
     Filters out rows in where the target values are outliers with respect to subsectorial intensity.
 
     Parameters:
-    -----------
-    df:pandas.DataFrame
-        Input dataframe to be processed.
+    - df: dataframe to be processed.
 
     Returns:
-    --------
-    data_new:pandas.DataFrame
-        Processed dataframe with outlier rows removed.
+
+    - data_new: Processed dataframe with outlier rows removed.
     """
     index_to_drop = []
 
@@ -530,19 +565,19 @@ def custom_train_split(
     Relevant features are selected using a predefined method.
     The processed data is split into features and target for both the train and test sets.
     The function returns the processed train and test data, relevant features, and the original test set with the selected features.
+    
     Parameters:
-
-    dataset: The input dataset to be split and preprocessed.
-    path_benchmark: The path of a file containing the benchmark date for the train-test split.
-    path_intermediary: The path of a file containing the mean and minimum values for mean imputation.
+    - dataset: The input dataset to be split and preprocessed.
+    - path_benchmark: The path of a file containing the benchmark date for the train-test split.
+    - path_intermediary: The path of a file containing the mean and minimum values for mean imputation.
+    
     Returns:
-
-    X_train: The processed feature matrix for the training set.
-    y_train: The processed target variable for the training set.
-    X_test: The processed feature matrix for the test set.
-    y_test: The processed target variable for the test set.
-    features: The selected relevant features.
-    df_test: The original test set with the selected features.
+    - X_train: The processed feature matrix for the training set.
+    - y_train: The processed target variable for the training set.
+    - X_test: The processed feature matrix for the test set.
+    - y_test: The processed target variable for the test set.
+    - features: The selected relevant features.
+    - df_test: The original test set with the selected features.
 
     """
     try:
