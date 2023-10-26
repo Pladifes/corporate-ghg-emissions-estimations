@@ -463,12 +463,12 @@ def encoding(df, path_intermediary, train, restricted_features):
         ]
 
     df = processingrawdata(df, restricted_features, train=train)
-    df = fillmeanindustry(
-        df,
-        FillList,
-        path_intermediary,
-        train=train,
-    )
+    # df = fillmeanindustry(
+    #     df,
+    #     FillList,
+    #     path_intermediary,
+    #     train=train,
+    # )
 
     df = logtransform(df, LogList, path_intermediary, train=train)
 

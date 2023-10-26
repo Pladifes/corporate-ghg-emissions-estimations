@@ -169,6 +169,7 @@ def scopes_report(
     path_intermediary,
     restricted_features,
     path_models,
+    path_rawdata,
 ):
     """
     This function generates a report of estimated scopes based on a provided dataset, target variable, best model, and additional parameters.
@@ -190,6 +191,9 @@ def scopes_report(
     features = features["features"].to_list()
     lst = [
         "company_id",
+        "company_name",
+        "ticker",
+        "lei",
         "fiscal_year",
     ]
 
@@ -205,12 +209,13 @@ def scopes_report(
     final_model = best_model.fit(
         final_dataset_train[features], final_dataset_train[target]
     )
-    final_y_pred = final_model.predict(final_dataset[features])
+    dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
+    final_y_pred = final_model.predict(dataset_predict[features])
 
     with open(path_models + f"{target}_model.pkl", "wb") as f:
         pickle.dump(best_model, f)
 
-    final_dataset_summary = final_dataset[lst]
+    final_dataset_summary = dataset_predict[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
     estimated_scopes.append(final_dataset_summary)
     return estimated_scopes, lst
@@ -287,6 +292,7 @@ def best_model_analysis(
     estimated_scopes,
     restricted_features,
     path_models,
+    path_rawdata,
 ):
     """
     Analyze the performance of the best machine learning model and generate a detailed report.
@@ -330,6 +336,7 @@ def best_model_analysis(
         path_intermediary,
         restricted_features=restricted_features,
         path_models=path_models,
+        path_rawdata=path_rawdata,
     )
     return summary_metrics_detailed, estimated_scopes, lst
 
@@ -357,7 +364,7 @@ def results(
             merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer"
         )
     merged_estimated_scopes = merged_estimated_scopes.sort_values(
-        by=["company_id", "fiscal_year"]
+        by=["company_id"]
     )
     merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
     profile = ProfileReport(merged_estimated_scopes, minimal=True)

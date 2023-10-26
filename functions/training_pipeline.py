@@ -13,6 +13,7 @@ def training_pipeline(
     path_models,
     path_intermediary,
     path_plot,
+    path_rawdata,
     targets,
     models,
     summary_final,
@@ -23,7 +24,7 @@ def training_pipeline(
     training_parameters,
     restricted_features=False,
     save=False,
-):
+    ):
     """
     Apply a training pipeline for imputed targets, models, and parameters.
 
@@ -123,6 +124,7 @@ def training_pipeline(
                 estimated_scopes,
                 restricted_features,
                 path_models,
+                path_rawdata,
             )
     if save:
         results(
