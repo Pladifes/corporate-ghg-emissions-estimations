@@ -73,50 +73,7 @@ def production_pipeline(
     # Training parameters
     targets = ["cf1_log", "cf2_log", "cf3_log", "cf123_log"]
     models = {"catboost": catboost_model}
-
-    if restricted_features:
-        training_parameters = {
-            "seed": 0,
-            "n_iter": 10,
-            "extended_features": [
-                "revenue_log",
-                "asset_log",
-                "ebit_log",
-                "price",
-                "fuel_intensity",
-                "fiscal_year",
-            ],
-            "selec_sect": ["gics_sub_ind"],
-            "cross_val": False,
-        }
-    else:
-        training_parameters = {
-            "seed": 0,
-            "n_iter": 10,
-            "extended_features": [
-                "revenue_log",
-                "employees_log",
-                "asset_log",
-                "nppe_log",
-                "capex_log",
-                "age",
-                "capinten",
-                "gmar",
-                "leverage",
-                "price",
-                "fuel_intensity",
-                "fiscal_year",
-                "energy_consumed_log",
-                "energy_produced_log",
-                "intan_log",
-                "accudep_log",
-                "cogs_log",
-            ],
-            "selec_sect": ["gics_sub_ind", "gics_ind", "gics_group"],
-            "cross_val": False,
-        }
     summary_final = []
-    ensemble = []
     summary_metrics_detailed = pd.DataFrame()
     estimated_scopes = []
     save = True
@@ -136,11 +93,9 @@ def production_pipeline(
         targets=targets,
         models=models,
         summary_final=summary_final,
-        ensemble=ensemble,
         summary_metrics_detailed=summary_metrics_detailed,
         estimated_scopes=estimated_scopes,
         preprocessed_dataset=preprocessed_dataset,
-        training_parameters=training_parameters,
         restricted_features=restricted_features,
         save=save,
     )

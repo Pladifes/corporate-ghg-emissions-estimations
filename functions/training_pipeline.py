@@ -5,7 +5,7 @@ import time
 import configparser
 
 config = configparser.ConfigParser()
-config.read('data/raw_data/parameters.ini')
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -66,8 +66,10 @@ def training_pipeline(
     """
     best_scores = []
     best_stds = []
-    # training_parameters_dict = {}
-
+    if restricted_features:
+        config.read('data/raw_data/parameters_restricted.ini')
+    else :
+        config.read('data/raw_data/parameters_unrestricted.ini')
     for target in targets:
         ensemble=[]
         parameters = config[target]
@@ -79,8 +81,6 @@ def training_pipeline(
                 "selec_sect": parameters.get('selec_sect').split(','),
                 "cross_val": parameters.getboolean('cross_val')
             }            
-        # training_parameters_dict[target] = training_parameters
-        print(training_parameters)
         logger.info(f"Training for target: {target}")
         start_time = time.time()
         test_scores = []
