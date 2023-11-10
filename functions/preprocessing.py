@@ -94,7 +94,7 @@ def set_columns(df, features):
     return df
 
 
-def logtransform(df, ls, path_results, train):
+def logtransform(target,df, ls, path_results, train):
     """
     Calculate the base-10 logarithm of selected columns in a DataFrame and return the updated DataFrame.
 
@@ -132,10 +132,10 @@ def logtransform(df, ls, path_results, train):
             columns_min.append(columns_min_dict)
 
         columns_min_df = pd.DataFrame(columns_min)
-        columns_min_df.to_csv(path_results + f"columns_min.csv", index=False)
+        columns_min_df.to_csv(path_results + f"columns_min_{target}.csv", index=False)
 
     else:
-        columns_min = pd.read_csv(path_results + f"columns_min.csv")
+        columns_min = pd.read_csv(path_results + f"columns_min_{target}.csv")
         for l in ls:
             if l in ["cf1", "cf3", "cf2", "cf123"]:
                 res[l + "_log"] = np.log10(res[l] + 1)
@@ -237,7 +237,7 @@ def processingrawdata(data_old, restricted_features, train):
     return data_new
 
 
-def fillmeanindustry(data_old, columnlist, path_intermediary, train):
+def fillmeanindustry(target,data_old, columnlist, path_intermediary, train):
     """
     Fill in missing values in a pandas DataFrame by using the mean of the corresponding group values.
 
@@ -354,11 +354,11 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
             dict_mean_to_impute[column] = dict_mean_to_impute_col
 
-        with open(f"{path_intermediary}dict_means.json", "w") as fp:
+        with open(f"{path_intermediary}dict_means_{target}.json", "w") as fp:
             json.dump(dict_mean_to_impute, fp)
 
     else:
-        with open(f"{path_intermediary}dict_means.json", "r") as fp:
+        with open(f"{path_intermediary}dict_means_{target}.json", "r") as fp:
             df_means = json.load(fp)
 
         for column in columnlist:
@@ -388,7 +388,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     return data_new
 
 
-def encoding(df, path_intermediary, train, restricted_features):
+def encoding(target,df, path_intermediary, train, restricted_features):
     """
     This function encodes and processes the input dataframe 'df' as follows:
     1. Removes rows from 'df' where 'company_id' is equal to 'OMH.AX', 'NHH.MC' or '1101.HK'.
@@ -463,21 +463,21 @@ def encoding(df, path_intermediary, train, restricted_features):
         ]
 
     df = processingrawdata(df, restricted_features, train=train)
-    df = fillmeanindustry(
+    df = fillmeanindustry(target,
         df,
         FillList,
         path_intermediary,
         train=train,
     )
 
-    df = logtransform(df, LogList, path_intermediary, train=train)
+    df = logtransform(target,df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
     return df
 
 
 def selected_features(
-    df_train, df_test, path_intermediary, extended_features, selec_sect
+    target,df_train, df_test, path_intermediary, extended_features, selec_sect
 ):
     """
     Selects a set of features from a pandas DataFrame.
@@ -499,7 +499,7 @@ def selected_features(
     # fixed_features = [f.replace(" ", "_") for f in fixed_features]
 
     pd.DataFrame(fixed_features, columns=["features"]).to_csv(
-        path_intermediary + "features.csv", index=False
+        path_intermediary + f"features_{target}.csv", index=False
     )
 
     return fixed_features
@@ -582,10 +582,10 @@ def custom_train_split(
     """
     try:
         
-        df_train = pd.read_parquet(path_intermediary + "df_train.parquet")
-        df_test = pd.read_parquet(path_intermediary + "df_test.parquet")
+        df_train = pd.read_parquet(path_intermediary + f"df_train_{target}.parquet")
+        df_test = pd.read_parquet(path_intermediary + f"df_test_{target}.parquet")
 
-        features = pd.read_csv(path_intermediary + "features.csv")["features"].tolist()
+        features = pd.read_csv(path_intermediary + f"features_{target}.csv")["features"].tolist()
         print("Using pre created preprocessed files")
 
     except FileNotFoundError:
@@ -597,12 +597,14 @@ def custom_train_split(
 
         df_train, df_test = (
             encoding(
+                target,
                 df_train_before_imputation,
                 path_intermediary,
                 train=True,
                 restricted_features=restricted_features,
             ),
             encoding(
+                target,
                 df_test_before_imputation,
                 path_intermediary,
                 train=False,
@@ -611,6 +613,7 @@ def custom_train_split(
         )
 
         features = selected_features(
+            target,
             df_train,
             df_test,
             path_intermediary,
@@ -624,8 +627,8 @@ def custom_train_split(
         df_train.index.name = "saved_index"
         df_test.index.name = "saved_index"
 
-        df_train.to_parquet(path_intermediary + "df_train.parquet")
-        df_test.to_parquet(path_intermediary + "df_test.parquet")
+        df_train.to_parquet(path_intermediary + f"df_train_{target}.parquet")
+        df_test.to_parquet(path_intermediary + f"df_test_{target}.parquet")
 
     df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
         df_test, target
@@ -634,6 +637,9 @@ def custom_train_split(
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target]
         X_test, y_test = df_test[features], df_test[target]
+
+        X_train.to_parquet(path_intermediary + f"X_train_{target}.parquet")
+        X_test.to_parquet(path_intermediary + f"X_test_{target}.parquet")
     elif target in ["cf1_log_cf123", "cf3_log_cf123", "cf2_log_cf123"]:
         target = target[:-6]
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)

@@ -2,6 +2,11 @@ from functions.preprocessing import custom_train_split
 from functions.results import best_model_analysis, metrics, results
 import logging
 import time
+import configparser
+
+config = configparser.ConfigParser()
+config.read('data/raw_data/parameters.ini')
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,11 +21,10 @@ def training_pipeline(
     targets,
     models,
     summary_final,
-    ensemble,
+    # ensemble,
     summary_metrics_detailed,
     estimated_scopes,
     preprocessed_dataset,
-    training_parameters,
     restricted_features=False,
     save=False,
 ):
@@ -62,8 +66,21 @@ def training_pipeline(
     """
     best_scores = []
     best_stds = []
+    # training_parameters_dict = {}
 
     for target in targets:
+        ensemble=[]
+        parameters = config[target]
+        training_parameters = {}
+        training_parameters = {
+                "seed": parameters.getint('seed'),
+                "n_iter": parameters.getint('n_iter'),
+                "extended_features": parameters.get('extended_features').split(','),
+                "selec_sect": parameters.get('selec_sect').split(','),
+                "cross_val": parameters.getboolean('cross_val')
+            }            
+        # training_parameters_dict[target] = training_parameters
+        print(training_parameters)
         logger.info(f"Training for target: {target}")
         start_time = time.time()
         test_scores = []
@@ -107,6 +124,7 @@ def training_pipeline(
         logger.info(f"Elapsed time for target {target}: {elapsed_time:.2f} seconds")
 
         if save:
+            print(test_scores)
             best_model_index = test_scores.index(min(test_scores))
             best_model = ensemble[best_model_index]
             summary_metrics_detailed, estimated_scopes, lst = best_model_analysis(

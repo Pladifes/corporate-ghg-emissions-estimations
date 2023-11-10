@@ -186,14 +186,18 @@ def scopes_report(
     - estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary.
     - lst (list): A list of column names to be included in the final dataset summary.
     """
-    features = pd.read_csv(path_intermediary + "features.csv")
+    features = pd.read_csv(path_intermediary + f"features_{target}.csv")
     features = features["features"].to_list()
     lst = [
         "company_id",
+        # "company_name",
+        # "ticker",
+        # "lei",
         "fiscal_year",
     ]
 
     final_dataset = encoding(
+        target,
         dataset,
         path_intermediary,
         train=True,
@@ -313,6 +317,7 @@ def best_model_analysis(
 
 
     """
+    
     y_pred_best = best_model.predict(X_test)
     plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
     metrics_scope = summary_detailed(

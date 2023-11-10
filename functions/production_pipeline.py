@@ -25,7 +25,7 @@ def production_pipeline(
     targets,
     models,
 ):
-        """
+    """
     Apply a comprehensive pipeline for training machine learning models and saving them for future use.
 
     Parameters:
@@ -54,25 +54,25 @@ def production_pipeline(
     """
     logging.info("Starting production pipeline")
 
-    #paths
-    path_rawdata = 'data/raw_data/'
-    path_benchmark = 'benchmark/'
+    # paths
+    path_rawdata = "data/raw_data/"
+    path_benchmark = "benchmark/"
 
     if restricted_features == False:
-        path_intermediary = 'data/intermediary_data/unrestricted_features/'
-        path_models = 'models/unrestricted_features/'
-        path_results = 'results/unrestricted_features/'
-        path_plot = path_results +'plot/'
+        path_intermediary = "data/intermediary_data/unrestricted_features/"
+        path_models = "models/unrestricted_features/"
+        path_results = "results/unrestricted_features/"
+        path_plot = path_results + "plot/"
 
     elif restricted_features == True:
-        path_intermediary = 'data/intermediary_data/restricted_features/'
-        path_models = 'models/restricted_features/'
-        path_results = 'results/restricted_features/'
-        path_plot = path_results +'plot/'
+        path_intermediary = "data/intermediary_data/restricted_features/"
+        path_models = "models/restricted_features/"
+        path_results = "results/restricted_features/"
+        path_plot = path_results + "plot/"
 
     # Training parameters
-    targets=["cf1_log", "cf2_log", "cf3_log", "cf123_log"]
-    models={"catboost": catboost_model}
+    targets = ["cf1_log", "cf2_log", "cf3_log", "cf123_log"]
+    models = {"catboost": catboost_model}
 
     if restricted_features:
         training_parameters = {
