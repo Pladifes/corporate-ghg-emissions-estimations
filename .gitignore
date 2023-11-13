@@ -137,3 +137,8 @@ models/
 # exception (for unit tests)
 !data/unit_test_data/models/
 !data/unit_test_data/results/
+
+
+*.xlsx
+*.csv
+*.parquet

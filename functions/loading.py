@@ -69,11 +69,11 @@ def load_data(
     except FileNotFoundError:
         print("File not found, constructing it")
 
-        input_dataset = pd.read_parquet(path + "input_dataset.parquet")
+        input_dataset = pd.read_parquet(path + "input_dataset_full_extract.parquet")
         assert_input_format(input_dataset)
         region_mapping = pd.read_excel(path + "country_region_mapping.xlsx")
-        carbon_pricing = pd.read_csv(
-            path + "carbon_pricing_preprocessed_2023.csv",
+        carbon_pricing = pd.read_excel(
+            path + "carbon_pricing_preprocessed_2023.xlsx",
         )
         income_group = pd.read_csv(
             path + "income_group_preprocessed_2023.csv",
