@@ -21,7 +21,6 @@ def training_pipeline(
     targets,
     models,
     summary_final,
-    # ensemble,
     summary_metrics_detailed,
     estimated_scopes,
     preprocessed_dataset,
