@@ -6,6 +6,9 @@ import numpy as np
 from functions.merged_dataset_creation import merge_datasets
 from functions.preprocessing import encoding, set_columns
 
+import configparser
+
+config = configparser.ConfigParser()
 
 def apply_model_on_forbes_data(
     path_rawdata="data/raw_data/",
@@ -109,9 +112,6 @@ def apply_model_on_forbes_data(
 
 def apply_model_on_raw_data(
     dataset,
-    path_intermediary="data/intermediary_data",
-    path_models="models/",
-    path_results="results/",
     save=False,
 ):
     """
@@ -136,15 +136,23 @@ def apply_model_on_raw_data(
     Note: Make sure the models used are appropriate for the provided 'dataset'.
 
     """
+    config.read('data/intermediary_data/unrestricted_features/parameters_unrestricted.ini')
+    path = config["paths_unrestricted"]
+    path_results= path.get('path_results')
+    path_models=  path.get('path_models')
+    path_intermediary=  path.get('path_intermediary')
+
+
     estimations = dataset[["company_id", "fiscal_year", "isin", "ticker", "gics_name"]]
     for scope in ["cf1", "cf2", "cf3", "cf123"]:
         preprocessed_dataset = encoding(
+            scope,
             dataset,
             path_intermediary,
             train=False,
             restricted_features=True,
         )
-        features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
+        features = pd.read_csv(path_intermediary + f"features_{scope}_log.csv").squeeze().tolist()
         preprocessed_dataset = set_columns(preprocessed_dataset, features)
         preprocessed_dataset = preprocessed_dataset[features]
         reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))

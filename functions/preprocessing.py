@@ -135,7 +135,10 @@ def logtransform(target,df, ls, path_results, train):
         columns_min_df.to_csv(path_results + f"columns_min_{target}.csv", index=False)
 
     else:
-        columns_min = pd.read_csv(path_results + f"columns_min_{target}.csv")
+        if "_log" in target : 
+            columns_min = pd.read_csv(path_results + f"columns_min_{target}.csv")
+        else :
+            columns_min = pd.read_csv(path_results + f"columns_min_{target}_log.csv")
         for l in ls:
             if l in ["cf1", "cf3", "cf2", "cf123"]:
                 res[l + "_log"] = np.log10(res[l] + 1)
@@ -358,8 +361,12 @@ def fillmeanindustry(target,data_old, columnlist, path_intermediary, train):
             json.dump(dict_mean_to_impute, fp)
 
     else:
-        with open(f"{path_intermediary}dict_means_{target}.json", "r") as fp:
-            df_means = json.load(fp)
+        if "_log" in target : 
+            with open(f"{path_intermediary}dict_means_{target}.json", "r") as fp:
+                df_means = json.load(fp)
+        else :
+            with open(f"{path_intermediary}dict_means_{target}_log.json", "r") as fp:
+                df_means = json.load(fp)
 
         for column in columnlist:
             data_temp = data_new[data_new[column].isna()][
@@ -469,7 +476,6 @@ def encoding(target,df, path_intermediary, train, restricted_features):
         path_intermediary,
         train=train,
     )
-
     df = logtransform(target,df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
@@ -490,8 +496,7 @@ def selected_features(
     """
     df = pd.concat([df_train, df_test])
 
-    encoded_variables = ["final_co2_law_encoded", "income_group_encoded"]
-    fixed_features = extended_features + encoded_variables
+    fixed_features = extended_features 
 
     for sect in selec_sect:
         fixed_features += [x for x in df.columns if sect + "_" in str(x)]

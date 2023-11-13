@@ -5,20 +5,11 @@ import time
 import configparser
 
 config = configparser.ConfigParser()
-
-
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def training_pipeline(
-    path_benchmark,
-    path_results,
-    path_models,
-    path_intermediary,
-    path_plot,
-    path_rawdata,
     targets,
     models,
     summary_final,
@@ -67,9 +58,25 @@ def training_pipeline(
     best_scores = []
     best_stds = []
     if restricted_features:
-        config.read('data/raw_data/parameters_restricted.ini')
+        config.read('data/intermediary_data/restricted_features/parameters_restricted.ini')
+        path = config["paths_restricted"]
+        path_benchmark= path.get('path_benchmark')
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
+        path_plot=  path.get('path_plot')
+        path_rawdata=  path.get('path_rawdata')
+
     else :
-        config.read('data/raw_data/parameters_unrestricted.ini')
+        config.read('data/intermediary_data/unrestricted_features/parameters_unrestricted.ini')
+        path = config["paths_unrestricted"]
+        path_benchmark= path.get('path_benchmark')
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
+        path_plot=  path.get('path_plot')
+        path_rawdata=  path.get('path_rawdata')
+
     for target in targets:
         ensemble=[]
         parameters = config[target]
