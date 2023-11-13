@@ -56,7 +56,7 @@ def df_split(df, path_benchmark):
     If the benchmark file is not found, the function randomly selects 20% of the data as a test set and ensures that test sectors are also present in the training set.
     """
     try:
-        benchmark = pd.read_csv(path_benchmark + "lst_companies_test_gics_2023.csv")
+        benchmark = pd.read_csv(path_benchmark + "lst_companies_test.csv")
         benchmark_lst = benchmark["company_name"].tolist()
         mask = df["company_name"].isin(benchmark_lst)
         df_test = df[mask]
