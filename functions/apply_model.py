@@ -113,6 +113,7 @@ def apply_model_on_forbes_data(
 def apply_model_on_raw_data(
     dataset,
     save=False,
+    restricted_features = False
 ):
     """
     Apply pre-saved models to raw data to predict scope 1, 2, and 3 emissions.
@@ -136,17 +137,25 @@ def apply_model_on_raw_data(
     Note: Make sure the models used are appropriate for the provided 'dataset'.
 
     """
-    config.read('data/intermediary_data/unrestricted_features/parameters_unrestricted.ini')
-    path = config["paths_unrestricted"]
-    path_results= path.get('path_results')
-    path_models=  path.get('path_models')
-    path_intermediary=  path.get('path_intermediary')
+
+    if restricted_features:
+        config.read('data/intermediary_data/restricted_features/parameters_restricted.ini')
+        path = config["paths_restricted"]
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
+    
+    else: 
+        config.read('data/intermediary_data/unrestricted_features/parameters_unrestricted.ini')
+        path = config["paths_unrestricted"]
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
 
 
     estimations = dataset[["company_id", "fiscal_year", "isin", "ticker", "gics_name"]]
     for scope in ["cf1", "cf2", "cf3", "cf123"]:
         preprocessed_dataset = encoding(
-            scope,
             dataset,
             path_intermediary,
             train=False,

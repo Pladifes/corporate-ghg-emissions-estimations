@@ -19,20 +19,20 @@ def target_preprocessing(df, target):
     Returns:
     - pandas.DataFrame: A preprocessed DataFrame.
     """
-    if target == "cf1_log":
+    if target == "cf1":
         df = df[df["fiscal_year"] >= 2005]
         df = df.dropna(subset=["cf1_log"])
-    elif target == "cf2_log":
+    elif target == "cf2":
         df = df[df["fiscal_year"] >= 2005]
         df = df.dropna(subset=["cf2_log"])
-    elif target == "cf3_log":
+    elif target == "cf3":
         df = df[df["fiscal_year"] >= 2011]
         df = df.dropna(subset=["cf3_log"])
     elif (
-        (target == "cf123_log")
-        or (target == "cf1_log_cf123")
-        or (target == "cf2_log_cf123")
-        or (target == "cf3_log_cf123")
+        (target == "cf123")
+        or (target == "cf1_cf123")
+        or (target == "cf2_cf123")
+        or (target == "cf3_cf123")
     ):
         df = df[df["fiscal_year"] >= 2011]
         df = df.dropna(subset=["cf123_log"])
@@ -94,7 +94,7 @@ def set_columns(df, features):
     return df
 
 
-def logtransform(target,df, ls, path_results, train):
+def logtransform(df, ls, path_results, train):
     """
     Calculate the base-10 logarithm of selected columns in a DataFrame and return the updated DataFrame.
 
@@ -132,13 +132,10 @@ def logtransform(target,df, ls, path_results, train):
             columns_min.append(columns_min_dict)
 
         columns_min_df = pd.DataFrame(columns_min)
-        columns_min_df.to_csv(path_results + f"columns_min_{target}.csv", index=False)
+        columns_min_df.to_csv(path_results + f"columns_min.csv", index=False)
 
     else:
-        if "_log" in target : 
-            columns_min = pd.read_csv(path_results + f"columns_min_{target}.csv")
-        else :
-            columns_min = pd.read_csv(path_results + f"columns_min_{target}_log.csv")
+        columns_min = pd.read_csv(path_results + f"columns_min.csv")
         for l in ls:
             if l in ["cf1", "cf3", "cf2", "cf123"]:
                 res[l + "_log"] = np.log10(res[l] + 1)
@@ -240,7 +237,7 @@ def processingrawdata(data_old, restricted_features, train):
     return data_new
 
 
-def fillmeanindustry(target,data_old, columnlist, path_intermediary, train):
+def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     Fill in missing values in a pandas DataFrame by using the mean of the corresponding group values.
 
@@ -357,17 +354,12 @@ def fillmeanindustry(target,data_old, columnlist, path_intermediary, train):
 
             dict_mean_to_impute[column] = dict_mean_to_impute_col
 
-        with open(f"{path_intermediary}dict_means_{target}.json", "w") as fp:
+        with open(f"{path_intermediary}dict_means.json", "w") as fp:
             json.dump(dict_mean_to_impute, fp)
 
     else:
-        if "_log" in target : 
-            with open(f"{path_intermediary}dict_means_{target}.json", "r") as fp:
-                df_means = json.load(fp)
-        else :
-            with open(f"{path_intermediary}dict_means_{target}_log.json", "r") as fp:
-                df_means = json.load(fp)
-
+        with open(f"{path_intermediary}dict_means.json", "r") as fp:
+            df_means = json.load(fp)
         for column in columnlist:
             data_temp = data_new[data_new[column].isna()][
                 [column, "gics_sub_ind", "revenue"]
@@ -395,7 +387,7 @@ def fillmeanindustry(target,data_old, columnlist, path_intermediary, train):
     return data_new
 
 
-def encoding(target,df, path_intermediary, train, restricted_features):
+def encoding(df, path_intermediary, train, restricted_features):
     """
     This function encodes and processes the input dataframe 'df' as follows:
     1. Removes rows from 'df' where 'company_id' is equal to 'OMH.AX', 'NHH.MC' or '1101.HK'.
@@ -470,13 +462,13 @@ def encoding(target,df, path_intermediary, train, restricted_features):
         ]
 
     df = processingrawdata(df, restricted_features, train=train)
-    df = fillmeanindustry(target,
+    df = fillmeanindustry(
         df,
         FillList,
         path_intermediary,
         train=train,
     )
-    df = logtransform(target,df, LogList, path_intermediary, train=train)
+    df = logtransform(df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
     return df
@@ -528,7 +520,6 @@ def outliers_preprocess(
     """
     index_to_drop = []
 
-    scope = scope
     df[f"intensity_{scope}"] = np.log(df[scope] / df["revenue"])
 
     for subindustry in df["gics_sub_ind"].unique():
@@ -602,14 +593,14 @@ def custom_train_split(
 
         df_train, df_test = (
             encoding(
-                target,
+                
                 df_train_before_imputation,
                 path_intermediary,
                 train=True,
                 restricted_features=restricted_features,
             ),
             encoding(
-                target,
+                
                 df_test_before_imputation,
                 path_intermediary,
                 train=False,
@@ -638,18 +629,16 @@ def custom_train_split(
     df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
         df_test, target
     )
-    if target in ["cf1_log", "cf3_log", "cf2_log", "cf123_log"]:
+    if target in ["cf1", "cf3", "cf2", "cf123"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
-        X_train, y_train = df_train[features], df_train[target]
-        X_test, y_test = df_test[features], df_test[target]
+        X_train, y_train = df_train[features], df_train[target+"_log"]
+        X_test, y_test = df_test[features], df_test[target+"_log"]
 
-        X_train.to_parquet(path_intermediary + f"X_train_{target}.parquet")
-        X_test.to_parquet(path_intermediary + f"X_test_{target}.parquet")
-    elif target in ["cf1_log_cf123", "cf3_log_cf123", "cf2_log_cf123"]:
+    elif target in ["cf1_cf123", "cf3_cf123", "cf2_cf123"]:
         target = target[:-6]
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
-        X_train, y_train = df_train[features], df_train[target]
-        X_test, y_test = df_test[features], df_test[target]
+        X_train, y_train = df_train[features], df_train[target+"_log"]
+        X_test, y_test = df_test[features], df_test[target+"_log"]
     else:
         print("unexpected target name, error")
 

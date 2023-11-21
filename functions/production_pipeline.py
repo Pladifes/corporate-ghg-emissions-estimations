@@ -71,7 +71,7 @@ def production_pipeline(
         path_plot = path_results + "plot/"
 
     # Training parameters
-    targets = ["cf1_log", "cf2_log", "cf3_log", "cf123_log"]
+    targets = ["cf1", "cf2", "cf3", "cf123"]
     models = {"catboost": catboost_model}
     summary_final = []
     summary_metrics_detailed = pd.DataFrame()
@@ -85,11 +85,6 @@ def production_pipeline(
         summary_global,
         summary_metrics_detailed,
     ) = training_pipeline(
-        path_benchmark=path_benchmark,
-        path_results=path_results,
-        path_models=path_models,
-        path_intermediary=path_intermediary,
-        path_plot=path_plot,
         targets=targets,
         models=models,
         summary_final=summary_final,

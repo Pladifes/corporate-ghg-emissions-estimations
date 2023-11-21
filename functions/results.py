@@ -198,7 +198,6 @@ def scopes_report(
     ]
 
     final_dataset = encoding(
-        target,
         dataset,
         path_intermediary,
         train=True,
@@ -208,15 +207,15 @@ def scopes_report(
 
     final_dataset_train = target_preprocessing(final_dataset, target)
     final_model = best_model.fit(
-        final_dataset_train[features], final_dataset_train[target]
+        final_dataset_train[features], final_dataset_train[f"{target}_log"]
     )
     dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
     final_y_pred = final_model.predict(dataset_predict[features])
 
     with open(path_models + f"{target}_model.pkl", "wb") as f:
         pickle.dump(best_model, f)
-
     final_dataset_summary = dataset_predict[lst]
+    # final_dataset_summary = final_dataset[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
     estimated_scopes.append(final_dataset_summary)
     return estimated_scopes, lst
