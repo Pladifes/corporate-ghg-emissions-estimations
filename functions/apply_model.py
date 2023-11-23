@@ -88,10 +88,10 @@ def apply_model_on_forbes_data(
             train=False,
             restricted_features=True,
         )
-        features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
+        features = pd.read_csv(path_intermediary + f"features_{scope}.csv").squeeze().tolist()
         dataset = set_columns(dataset, features)
         dataset = dataset[features]
-        reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))
+        reg = pkl.load(open(path_models + "{}_model.pkl".format(scope), "rb"))
         scope_pred = reg.predict(dataset)
         df_forbes[scope + "_e"] = np.power(10, scope_pred + 1)
 
@@ -161,10 +161,10 @@ def apply_model_on_raw_data(
             train=False,
             restricted_features=True,
         )
-        features = pd.read_csv(path_intermediary + f"features_{scope}_log.csv").squeeze().tolist()
+        features = pd.read_csv(path_intermediary + f"features_{scope}.csv").squeeze().tolist()
         preprocessed_dataset = set_columns(preprocessed_dataset, features)
         preprocessed_dataset = preprocessed_dataset[features]
-        reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))
+        reg = pkl.load(open(path_models + "{}_model.pkl".format(scope), "rb"))
         scope_pred = reg.predict(preprocessed_dataset)
         estimations[scope + "_e"] = np.power(10, scope_pred + 1)
 

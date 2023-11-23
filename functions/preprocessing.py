@@ -128,6 +128,7 @@ def logtransform(df, ls, path_results, train):
             columns_min_dict = {
                 "column": l,
                 "min_value": res[l].min(),
+                
             }
             columns_min.append(columns_min_dict)
 
