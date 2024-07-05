@@ -217,6 +217,7 @@ def scopes_report(
         pickle.dump(best_model, f)
     final_dataset_summary = final_dataset[lst]
     final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
+    final_dataset_summary = final_dataset_summary.sort_values(by = ["company_name","fiscal_year"], ascending= False)
     estimated_scopes.append(final_dataset_summary)
 
     return estimated_scopes, lst
