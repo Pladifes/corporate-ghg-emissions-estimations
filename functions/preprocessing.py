@@ -19,20 +19,20 @@ def target_preprocessing(df, target):
     Returns:
     - pandas.DataFrame: A preprocessed DataFrame.
     """
-    if target == "cf1_log":
+    if target == "cf1":
         df = df[df["fiscal_year"] >= 2005]
         df = df.dropna(subset=["cf1_log"])
-    elif target == "cf2_log":
+    elif target == "cf2":
         df = df[df["fiscal_year"] >= 2005]
         df = df.dropna(subset=["cf2_log"])
-    elif target == "cf3_log":
+    elif target == "cf3":
         df = df[df["fiscal_year"] >= 2011]
         df = df.dropna(subset=["cf3_log"])
     elif (
-        (target == "cf123_log")
-        or (target == "cf1_log_cf123")
-        or (target == "cf2_log_cf123")
-        or (target == "cf3_log_cf123")
+        (target == "cf123")
+        or (target == "cf1_cf123")
+        or (target == "cf2_cf123")
+        or (target == "cf3_cf123")
     ):
         df = df[df["fiscal_year"] >= 2011]
         df = df.dropna(subset=["cf123_log"])
@@ -56,7 +56,7 @@ def df_split(df, path_benchmark):
     If the benchmark file is not found, the function randomly selects 20% of the data as a test set and ensures that test sectors are also present in the training set.
     """
     try:
-        benchmark = pd.read_csv(path_benchmark + "lst_companies_test_gics_2023.csv")
+        benchmark = pd.read_csv(path_benchmark + "lst_companies_test.csv")
         benchmark_lst = benchmark["company_name"].tolist()
         mask = df["company_name"].isin(benchmark_lst)
         df_test = df[mask]
@@ -128,6 +128,7 @@ def logtransform(df, ls, path_results, train):
             columns_min_dict = {
                 "column": l,
                 "min_value": res[l].min(),
+                
             }
             columns_min.append(columns_min_dict)
 
@@ -360,7 +361,6 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     else:
         with open(f"{path_intermediary}dict_means.json", "r") as fp:
             df_means = json.load(fp)
-
         for column in columnlist:
             data_temp = data_new[data_new[column].isna()][
                 [column, "gics_sub_ind", "revenue"]
@@ -469,7 +469,6 @@ def encoding(df, path_intermediary, train, restricted_features):
         path_intermediary,
         train=train,
     )
-
     df = logtransform(df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
@@ -477,7 +476,7 @@ def encoding(df, path_intermediary, train, restricted_features):
 
 
 def selected_features(
-    df_train, df_test, path_intermediary, extended_features, selec_sect
+    target,df_train, df_test, path_intermediary, extended_features, selec_sect
 ):
     """
     Selects a set of features from a pandas DataFrame.
@@ -490,8 +489,7 @@ def selected_features(
     """
     df = pd.concat([df_train, df_test])
 
-    encoded_variables = ["final_co2_law_encoded", "income_group_encoded"]
-    fixed_features = extended_features + encoded_variables
+    fixed_features = extended_features 
 
     for sect in selec_sect:
         fixed_features += [x for x in df.columns if sect + "_" in str(x)]
@@ -499,7 +497,7 @@ def selected_features(
     # fixed_features = [f.replace(" ", "_") for f in fixed_features]
 
     pd.DataFrame(fixed_features, columns=["features"]).to_csv(
-        path_intermediary + "features.csv", index=False
+        path_intermediary + f"features_{target}.csv", index=False
     )
 
     return fixed_features
@@ -523,7 +521,6 @@ def outliers_preprocess(
     """
     index_to_drop = []
 
-    scope = scope
     df[f"intensity_{scope}"] = np.log(df[scope] / df["revenue"])
 
     for subindustry in df["gics_sub_ind"].unique():
@@ -582,10 +579,10 @@ def custom_train_split(
     """
     try:
         
-        df_train = pd.read_parquet(path_intermediary + "df_train.parquet")
-        df_test = pd.read_parquet(path_intermediary + "df_test.parquet")
+        df_train = pd.read_parquet(path_intermediary + f"df_train_{target}.parquet")
+        df_test = pd.read_parquet(path_intermediary + f"df_test_{target}.parquet")
 
-        features = pd.read_csv(path_intermediary + "features.csv")["features"].tolist()
+        features = pd.read_csv(path_intermediary + f"features_{target}.csv")["features"].tolist()
         print("Using pre created preprocessed files")
 
     except FileNotFoundError:
@@ -597,12 +594,14 @@ def custom_train_split(
 
         df_train, df_test = (
             encoding(
+                
                 df_train_before_imputation,
                 path_intermediary,
                 train=True,
                 restricted_features=restricted_features,
             ),
             encoding(
+                
                 df_test_before_imputation,
                 path_intermediary,
                 train=False,
@@ -611,6 +610,7 @@ def custom_train_split(
         )
 
         features = selected_features(
+            target,
             df_train,
             df_test,
             path_intermediary,
@@ -624,21 +624,22 @@ def custom_train_split(
         df_train.index.name = "saved_index"
         df_test.index.name = "saved_index"
 
-        df_train.to_parquet(path_intermediary + "df_train.parquet")
-        df_test.to_parquet(path_intermediary + "df_test.parquet")
+        df_train.to_parquet(path_intermediary + f"df_train_{target}.parquet")
+        df_test.to_parquet(path_intermediary + f"df_test_{target}.parquet")
 
     df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
         df_test, target
     )
-    if target in ["cf1_log", "cf3_log", "cf2_log", "cf123_log"]:
+    if target in ["cf1", "cf3", "cf2", "cf123"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
-        X_train, y_train = df_train[features], df_train[target]
-        X_test, y_test = df_test[features], df_test[target]
-    elif target in ["cf1_log_cf123", "cf3_log_cf123", "cf2_log_cf123"]:
+        X_train, y_train = df_train[features], df_train[target+"_log"]
+        X_test, y_test = df_test[features], df_test[target+"_log"]
+
+    elif target in ["cf1_cf123", "cf3_cf123", "cf2_cf123"]:
         target = target[:-6]
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
-        X_train, y_train = df_train[features], df_train[target]
-        X_test, y_test = df_test[features], df_test[target]
+        X_train, y_train = df_train[features], df_train[target+"_log"]
+        X_test, y_test = df_test[features], df_test[target+"_log"]
     else:
         print("unexpected target name, error")
 
@@ -648,4 +649,5 @@ def custom_train_split(
         X_test,
         y_test,
         df_test,
+        df_train
     )

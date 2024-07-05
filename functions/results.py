@@ -169,6 +169,8 @@ def scopes_report(
     path_intermediary,
     restricted_features,
     path_models,
+    path_rawdata,
+    customized_model,
 ):
     """
     This function generates a report of estimated scopes based on a provided dataset, target variable, best model, and additional parameters.
@@ -186,10 +188,13 @@ def scopes_report(
     - estimated_scopes (list): A list of estimated scopes, updated with the new dataset summary.
     - lst (list): A list of column names to be included in the final dataset summary.
     """
-    features = pd.read_csv(path_intermediary + "features.csv")
+    features = pd.read_csv(path_intermediary + f"features_{target}.csv")
     features = features["features"].to_list()
     lst = [
         "company_id",
+        "company_name",
+        "ticker",
+        # "lei",
         "fiscal_year",
     ]
 
@@ -203,17 +208,41 @@ def scopes_report(
 
     final_dataset_train = target_preprocessing(final_dataset, target)
     final_model = best_model.fit(
-        final_dataset_train[features], final_dataset_train[target]
+        final_dataset_train[features], final_dataset_train[f"{target}_log"]
     )
+    # dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
     final_y_pred = final_model.predict(final_dataset[features])
+    
 
-    with open(path_models + f"{target}_model.pkl", "wb") as f:
-        pickle.dump(best_model, f)
+    if customized_model : 
+        df_uncertainty = uncertainty_est(final_dataset, final_y_pred, final_dataset[f"{target}_log"], confidence_multiplier=1.64)
+        cols = ["y_lower", "y_upper", "y_mean"]
+    
+        for col in cols : 
+            df_uncertainty[col] = np.power(10, df_uncertainty[col] + 1)
+        
+        columns_to_keep = ["company_id","company_name","ticker","fiscal_year","y_lower", "y_upper", "y_mean"]
+        df_uncertainty = df_uncertainty[columns_to_keep]
+        df_uncertainty.columns= ["company_id","company_name","ticker","fiscal_year",f"{target}_estimated_lower_bound",f"{target}_estimated_upper_bound",f"{target}_estimated"]
+        final_y_pred =final_y_pred [:,0]
 
-    final_dataset_summary = final_dataset[lst]
-    final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
-    estimated_scopes.append(final_dataset_summary)
+        with open(path_models + f"{target}_model.pkl", "wb") as f:
+            pickle.dump(best_model, f)
+        final_dataset_summary = final_dataset[lst]
+        final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
+        final_dataset_uncert = pd.merge(final_dataset_summary,df_uncertainty, on = lst + [f"{target}_estimated"], how = "left" )
+        final_dataset_uncert= final_dataset_uncert.sort_values(by=["company_name","fiscal_year"], ascending=False)
+
+        estimated_scopes.append(final_dataset_uncert)
+    else : 
+        with open(path_models + f"{target}_model.pkl", "wb") as f:
+            pickle.dump(best_model, f)
+        final_dataset_summary = final_dataset[lst]
+        # final_dataset_summary = final_dataset[lst]
+        final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
+        estimated_scopes.append(final_dataset_summary)
     return estimated_scopes, lst
+
 
 
 def metrics(y_test, y_pred, summary_final, target, model_name, n_split=10):
@@ -287,6 +316,8 @@ def best_model_analysis(
     estimated_scopes,
     restricted_features,
     path_models,
+    path_rawdata,
+    customized_model,
 ):
     """
     Analyze the performance of the best machine learning model and generate a detailed report.
@@ -313,11 +344,18 @@ def best_model_analysis(
 
 
     """
+    
     y_pred_best = best_model.predict(X_test)
-    plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
+
+    if customized_model : 
+        y_pred_best =y_pred_best[:,0]
+
+    plot(best_model, X_train, y_test, y_pred_best, path_plot, target, customized_model)
+
     metrics_scope = summary_detailed(
         X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot
     )
+
     summary_metrics_detailed = pd.concat(
         [summary_metrics_detailed, metrics_scope], ignore_index=True
     )
@@ -330,6 +368,8 @@ def best_model_analysis(
         path_intermediary,
         restricted_features=restricted_features,
         path_models=path_models,
+        path_rawdata=path_rawdata,
+        customized_model=True,
     )
     return summary_metrics_detailed, estimated_scopes, lst
 
@@ -357,7 +397,7 @@ def results(
             merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer"
         )
     merged_estimated_scopes = merged_estimated_scopes.sort_values(
-        by=["company_id", "fiscal_year"]
+        by=["company_id"]
     )
     merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
     profile = ProfileReport(merged_estimated_scopes, minimal=True)
@@ -409,3 +449,48 @@ def gics_to_name(gics_sector):
         return "Real Estate"
     else:
         return gics_sector
+
+
+def is_between(y_true, y_lower, y_upper):
+    return (y_true >= y_lower) and (y_true <= y_upper)
+
+def uncertainty_est(initial_dataset, y_pred, y_test, confidence_multiplier):
+
+
+    mean_y_pred, var_y_pred = y_pred[:,0], y_pred[:,1]
+    df_test =  pd.DataFrame({
+        "company_id": initial_dataset["company_id"],
+        "company_name": initial_dataset["company_name"],
+        "ticker": initial_dataset["ticker"],
+        "fiscal_year": initial_dataset["fiscal_year"],
+        "y_true": y_test,
+        "y_mean":mean_y_pred,
+        "y_variance": var_y_pred})
+    
+    df_test["y_lower"] = (df_test["y_mean"] - confidence_multiplier * np.sqrt(df_test["y_variance"]))
+
+    df_test["y_upper"] = (df_test["y_mean"] + confidence_multiplier * np.sqrt(df_test["y_variance"]))
+
+    df_test["is_between"] = df_test.apply(lambda x: is_between(x["y_true"], x["y_lower"], x["y_upper"]), axis=1)
+
+    df_test["difference"] = df_test["y_upper"] - df_test["y_lower"]
+    return df_test
+
+def uncertainty_analysis(df_train, df_test, target, difference_mean_train_dict,couvrage_train_dict, couvrage_test_dict, difference_mean_test_dict):
+
+    couvrage_train = df_train["is_between"].sum()/len(df_train)
+    couvrage_train_dict[target] = couvrage_train
+    couvrage_test = df_test["is_between"].sum()/len(df_test)
+    couvrage_test_dict[target] = couvrage_test
+    difference_mean_train_dict[target] = df_train["difference"].mean()
+    difference_mean_test_dict[target] = df_test["difference"].mean()
+
+    df_couvrage = pd.DataFrame({
+        "Covrage train": couvrage_train_dict.values(),
+        "Covrage test": couvrage_test_dict.values(),
+        "Difference mean train": difference_mean_train_dict.values(),
+        "Difference mean test": difference_mean_test_dict.values()
+        })
+
+    return df_couvrage
+

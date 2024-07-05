@@ -6,6 +6,9 @@ import numpy as np
 from functions.merged_dataset_creation import merge_datasets
 from functions.preprocessing import encoding, set_columns
 
+import configparser
+
+config = configparser.ConfigParser()
 
 def apply_model_on_forbes_data(
     path_rawdata="data/raw_data/",
@@ -85,10 +88,10 @@ def apply_model_on_forbes_data(
             train=False,
             restricted_features=True,
         )
-        features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
+        features = pd.read_csv(path_intermediary + f"features_{scope}.csv").squeeze().tolist()
         dataset = set_columns(dataset, features)
         dataset = dataset[features]
-        reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))
+        reg = pkl.load(open(path_models + "{}_model.pkl".format(scope), "rb"))
         scope_pred = reg.predict(dataset)
         df_forbes[scope + "_e"] = np.power(10, scope_pred + 1)
 
@@ -109,10 +112,8 @@ def apply_model_on_forbes_data(
 
 def apply_model_on_raw_data(
     dataset,
-    path_intermediary="data/intermediary_data",
-    path_models="models/",
-    path_results="results/",
     save=False,
+    restricted_features = False
 ):
     """
     Apply pre-saved models to raw data to predict scope 1, 2, and 3 emissions.
@@ -136,6 +137,22 @@ def apply_model_on_raw_data(
     Note: Make sure the models used are appropriate for the provided 'dataset'.
 
     """
+
+    if restricted_features:
+        config.read('data/intermediary_data/restricted_features/parameters_restricted.ini')
+        path = config["paths_restricted"]
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
+    
+    else: 
+        config.read('data/intermediary_data/unrestricted_features/parameters_unrestricted.ini')
+        path = config["paths_unrestricted"]
+        path_results= path.get('path_results')
+        path_models=  path.get('path_models')
+        path_intermediary=  path.get('path_intermediary')
+
+
     estimations = dataset[["company_id", "fiscal_year", "isin", "ticker", "gics_name"]]
     for scope in ["cf1", "cf2", "cf3", "cf123"]:
         preprocessed_dataset = encoding(
@@ -144,10 +161,10 @@ def apply_model_on_raw_data(
             train=False,
             restricted_features=True,
         )
-        features = pd.read_csv(path_intermediary + "features.csv").squeeze().tolist()
+        features = pd.read_csv(path_intermediary + f"features_{scope}.csv").squeeze().tolist()
         preprocessed_dataset = set_columns(preprocessed_dataset, features)
         preprocessed_dataset = preprocessed_dataset[features]
-        reg = pkl.load(open(path_models + "{}_log_model.pkl".format(scope), "rb"))
+        reg = pkl.load(open(path_models + "{}_model.pkl".format(scope), "rb"))
         scope_pred = reg.predict(preprocessed_dataset)
         estimations[scope + "_e"] = np.power(10, scope_pred + 1)
 

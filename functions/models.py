@@ -15,6 +15,7 @@ def xgboost_model(
     seed=None,
     weights=None,
     custom_gradient=False,
+    customized_model = False,
 ):
     """
     Create an XGBoost regression model.
@@ -112,6 +113,7 @@ def lgbm_model(
     seed=None,
     weights=None,
     custom_gradient=False,
+    customized_model = False,
 ):
     """
     Create a LightGBM (LGBM) regression model.
@@ -214,6 +216,7 @@ def catboost_model(
     seed=None,
     weights=None,
     custom_gradient=False,
+    customized_model = True
 ):
     """
     Create a CatBoost regression model.
@@ -232,53 +235,104 @@ def catboost_model(
     Returns:
     - model (CatBoostRegressor): The trained CatBoost regression model.
     """
+    if customized_model : 
 
-    model = CatBoostRegressor(verbose=verbose, random_state=seed)
+        model = CatBoostRegressor(verbose=verbose, random_state=seed, loss_function = 'RMSEWithUncertainty')
 
-    if cross_val:
+        if cross_val:
 
-        def catboost_evaluate(
-            depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations
-        ):
-            params = {
-                "depth": int(depth),
-                "learning_rate": learning_rate,
-                "l2_leaf_reg": l2_leaf_reg,
-                "rsm": rsm,
-                "subsample": subsample,
-                "iterations": int(iterations),
-            }
-            model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
-            score = cross_val_score(
-                model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs
-            ).mean()
+            def catboost_evaluate(
+                depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations
+            ):
+                params = {
+                    "depth": int(depth),
+                    "learning_rate": learning_rate,
+                    "l2_leaf_reg": l2_leaf_reg,
+                    "rsm": rsm,
+                    "subsample": subsample,
+                    "iterations": int(iterations),
+                }
+                model = CatBoostRegressor(verbose=verbose, random_state=seed, loss_function = 'RMSEWithUncertainty', **params)
+                score = cross_val_score(
+                    model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs
+                ).mean()
 
-            return score
+                return score
 
-        catboost_bo = BayesianOptimization(
-            catboost_evaluate,
-            {
-                "depth": (2, 8),
-                "learning_rate": (0.01, 0.5),
-                "l2_leaf_reg": (1, 9),
-                "rsm": (0.5, 1),
-                "subsample": (0.5, 1),
-                "iterations": (10, 2000),
-            },
-            verbose=0,
-            random_state=seed,
-        )
-        catboost_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
+            catboost_bo = BayesianOptimization(
+                catboost_evaluate,
+                {
+                    "depth": (2, 8),
+                    "learning_rate": (0.01, 0.5),
+                    "l2_leaf_reg": (1, 9),
+                    "rsm": (0.5, 1),
+                    "subsample": (0.5, 1),
+                    "iterations": (10, 2000),
+                },
+                verbose=0,
+                random_state=seed,
+            )
+            catboost_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
 
-        model = CatBoostRegressor(
-            verbose=verbose,
-            random_state=seed,
-            depth=int(catboost_bo.max["params"]["depth"]),
-            learning_rate=catboost_bo.max["params"]["learning_rate"],
-            l2_leaf_reg=catboost_bo.max["params"]["l2_leaf_reg"],
-            rsm=catboost_bo.max["params"]["rsm"],
-            subsample=catboost_bo.max["params"]["subsample"],
-        )
+            model = CatBoostRegressor(
+                verbose=verbose,
+                random_state=seed,
+                loss_function = 'RMSEWithUncertainty',
+                depth=int(catboost_bo.max["params"]["depth"]),
+                learning_rate=catboost_bo.max["params"]["learning_rate"],
+                l2_leaf_reg=catboost_bo.max["params"]["l2_leaf_reg"],
+                rsm=catboost_bo.max["params"]["rsm"],
+                subsample=catboost_bo.max["params"]["subsample"],
+            )
+
+    else : 
+
+        model = CatBoostRegressor(verbose=verbose, random_state=seed)
+
+        if cross_val:
+
+            def catboost_evaluate(
+                depth, learning_rate, l2_leaf_reg, rsm, subsample, iterations
+            ):
+                params = {
+                    "depth": int(depth),
+                    "learning_rate": learning_rate,
+                    "l2_leaf_reg": l2_leaf_reg,
+                    "rsm": rsm,
+                    "subsample": subsample,
+                    "iterations": int(iterations),
+                }
+                model = CatBoostRegressor(verbose=verbose, random_state=seed, **params)
+                score = cross_val_score(
+                    model, X_train, y_train, scoring="r2", cv=10, n_jobs=n_jobs
+                ).mean()
+
+                return score
+
+            catboost_bo = BayesianOptimization(
+                catboost_evaluate,
+                {
+                    "depth": (2, 8),
+                    "learning_rate": (0.01, 0.5),
+                    "l2_leaf_reg": (1, 9),
+                    "rsm": (0.5, 1),
+                    "subsample": (0.5, 1),
+                    "iterations": (10, 2000),
+                },
+                verbose=0,
+                random_state=seed,
+            )
+            catboost_bo.maximize(init_points=10, n_iter=n_iter, acq="ei", xi=0.0)
+
+            model = CatBoostRegressor(
+                verbose=verbose,
+                random_state=seed,
+                depth=int(catboost_bo.max["params"]["depth"]),
+                learning_rate=catboost_bo.max["params"]["learning_rate"],
+                l2_leaf_reg=catboost_bo.max["params"]["l2_leaf_reg"],
+                rsm=catboost_bo.max["params"]["rsm"],
+                subsample=catboost_bo.max["params"]["subsample"],
+            )
 
     cat_train_data = Pool(data=X_train, label=y_train)
     model.fit(cat_train_data)

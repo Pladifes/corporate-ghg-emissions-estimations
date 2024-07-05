@@ -3,6 +3,9 @@ import pandas as pd
 from functions.merged_dataset_creation import create_preprocessed_dataset
 from functions.preprocessing import outliers_preprocess
 
+import configparser
+
+config = configparser.ConfigParser()
 
 def assert_input_format(df):
     """
@@ -45,7 +48,7 @@ def assert_input_format(df):
 
 
 def load_data(
-    path, filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
+    filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
 ):
     """
     Load pre-downloaded datasets from the specified path or construct them if missing.
@@ -61,6 +64,10 @@ def load_data(
     - preprocessed_dataset (DataFrame): The loaded or constructed preprocessed dataset.
 
     """
+    config.read('data/intermediary_data/restricted_features/parameters_restricted.ini')
+    path_config = config["paths_restricted"]
+    path=  path_config.get('path_rawdata')
+
     try:
         preprocessed_dataset = pd.read_parquet(
             path + "cgee_preprocessed_dataset_2023.parquet"
@@ -69,11 +76,11 @@ def load_data(
     except FileNotFoundError:
         print("File not found, constructing it")
 
-        input_dataset = pd.read_parquet(path + "input_dataset.parquet")
+        input_dataset = pd.read_parquet(path + "input_dataset_full_extract.parquet")
         assert_input_format(input_dataset)
         region_mapping = pd.read_excel(path + "country_region_mapping.xlsx")
-        carbon_pricing = pd.read_csv(
-            path + "carbon_pricing_preprocessed_2023.csv",
+        carbon_pricing = pd.read_excel(
+            path + "carbon_pricing_preprocessed_2023.xlsx",
         )
         income_group = pd.read_csv(
             path + "income_group_preprocessed_2023.csv",
