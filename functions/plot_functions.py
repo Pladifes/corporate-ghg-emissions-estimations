@@ -131,7 +131,7 @@ def plot_country(rmses, target, plot_path, sector_colors):
     ax = sns.boxplot(
         x="country", y=rmses_filtered.rmses, data=rmses_filtered, palette=sector_colors
     )
-    plt.title(f"RMSEs box plot for {target} per countries (5 bests and 5 worses)")
+    plt.title(f"RMSEs box plot for {target} per countries (5 best and 5 worse)")
     plt.xlabel("Countries")
     plt.ylabel("RMSEs")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -192,7 +192,7 @@ def plot_sub_sector(rmses, target, plot_path, sector_colors):
         data=rmses_filtered,
         palette=sector_colors,
     )
-    plt.title(f"RMSEs box plot for {target} per sub-sectors (5 bests and 5 worses)")
+    plt.title(f"RMSEs box plot for {target} per sub-sectors (5 best and 5 worse)")
     plt.xlabel("Sectors")
     plt.ylabel("RMSEs")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -380,4 +380,5 @@ def plot(model, X, y_test, y_pred, plot_path, target):
     plot_shap_values(model, X, plot_path, target)
     plot_y_test_y_pred(y_test, y_pred, plot_path, target)
     plot_residuals(y_test, y_pred, plot_path, target)
+    
     return

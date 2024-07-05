@@ -214,6 +214,7 @@ def catboost_model(
     seed=None,
     weights=None,
     custom_gradient=False,
+
 ):
     """
     Create a CatBoost regression model.
@@ -232,6 +233,7 @@ def catboost_model(
     Returns:
     - model (CatBoostRegressor): The trained CatBoost regression model.
     """
+    
 
     model = CatBoostRegressor(verbose=verbose, random_state=seed)
 
