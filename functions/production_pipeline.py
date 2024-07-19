@@ -16,14 +16,7 @@ pd.options.mode.chained_assignment = None
 
 def production_pipeline(
     restricted_features,
-    path_rawdata,
-    path_models,
-    path_benchmark,
-    path_results,
-    path_plot,
-    path_intermediary,
-    targets,
-    models,
+    save
 ):
     """
     Apply a comprehensive pipeline for training machine learning models and saving them for future use.
@@ -54,46 +47,31 @@ def production_pipeline(
     """
     logging.info("Starting production pipeline")
 
-    # paths
-    path_rawdata = "data/raw_data/"
-    path_benchmark = "benchmark/"
-
-    if restricted_features == False:
-        path_intermediary = "data/intermediary_data/unrestricted_features/"
-        path_models = "models/unrestricted_features/"
-        path_results = "results/unrestricted_features/"
-        path_plot = path_results + "plot/"
-
-    elif restricted_features == True:
-        path_intermediary = "data/intermediary_data/restricted_features/"
-        path_models = "models/restricted_features/"
-        path_results = "results/restricted_features/"
-        path_plot = path_results + "plot/"
-
     # Training parameters
+ 
+    models = {
+            "catboost": catboost_model,
+    }
+
     targets = ["cf1", "cf2", "cf3", "cf123"]
-    models = {"catboost": catboost_model}
-    summary_final = []
+
+    # Results containers
+    summary_final=[]
     summary_metrics_detailed = pd.DataFrame()
     estimated_scopes = []
-    save = True
 
-    preprocessed_dataset = load_data(path_rawdata, save=save)
-    (
-        best_scores,
-        best_stds,
-        summary_global,
-        summary_metrics_detailed,
-    ) = training_pipeline(
-        targets=targets,
-        models=models,
-        summary_final=summary_final,
-        summary_metrics_detailed=summary_metrics_detailed,
-        estimated_scopes=estimated_scopes,
-        preprocessed_dataset=preprocessed_dataset,
-        restricted_features=restricted_features,
-        save=save,
-    )
+    preprocessed_dataset = load_data(save=save)
+    best_scores, best_stds, summary_global, summary_metrics_detailed = training_pipeline(
+    targets=targets,
+    models=models,
+    summary_final=summary_final,
+    summary_metrics_detailed=summary_metrics_detailed,
+    estimated_scopes=estimated_scopes,
+    preprocessed_dataset=preprocessed_dataset,
+    restricted_features=restricted_features,
+    save=save,
+  
+)
     logging.info("Production pipeline completed")
 
     return
