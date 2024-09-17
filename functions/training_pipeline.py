@@ -17,9 +17,11 @@ def training_pipeline(
     summary_metrics_detailed,
     estimated_scopes,
     preprocessed_dataset,   
+    predict_dataset,
     restricted_features=False,
     save=False,
-    customized_model=True,    
+    customized_model=True,  
+    
     ):
     """
     Apply a training pipeline for imputed targets, models, and parameters.
@@ -153,7 +155,7 @@ def training_pipeline(
         logger.info(f"Elapsed time for target {target}: {elapsed_time:.2f} seconds")
 
         if save:
-            print(test_scores)
+
             best_model_index = test_scores.index(min(test_scores))
             best_model = ensemble[best_model_index]
             summary_metrics_detailed, estimated_scopes, lst = best_model_analysis(
@@ -164,7 +166,7 @@ def training_pipeline(
                 df_test,
                 target,
                 path_plot,
-                preprocessed_dataset,
+                predict_dataset,
                 path_intermediary,
                 summary_metrics_detailed,
                 estimated_scopes,

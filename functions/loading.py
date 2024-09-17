@@ -70,29 +70,29 @@ def load_data(
 
     try:
         preprocessed_dataset = pd.read_parquet(
-            path + "cgee_preprocessed_dataset_2023.parquet"
+            path + "cogem_preprocessed_dataset.parquet"
         )
 
     except FileNotFoundError:
         print("File not found, constructing it")
 
-        input_dataset = pd.read_parquet(path + "input_dataset_full_extract.parquet")
+        input_dataset = pd.read_parquet(path + "input_dataset_2024.parquet")
         assert_input_format(input_dataset)
         region_mapping = pd.read_excel(path + "country_region_mapping.xlsx")
         carbon_pricing = pd.read_excel(
-            path + "carbon_pricing_preprocessed_2023.xlsx",
+            path + "carbon_pricing_preprocessed.xlsx",
         )
-        income_group = pd.read_csv(
-            path + "income_group_preprocessed_2023.csv",
+        income_group = pd.read_excel(
+            path + "income_group_preprocessed.xlsx",
         )
-        fuel_intensity = pd.read_csv(path + "fuel_mix_2023.csv")
+        fuel_intensity = pd.read_csv(path + "fuel_mix.csv")
 
         preprocessed_dataset = create_preprocessed_dataset(
             input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
         )
         if save:
             preprocessed_dataset.to_parquet(
-                path + "cgee_preprocessed_dataset_2023.parquet"
+                path + "cogem_preprocessed_dataset.parquet"
             )
 
     if filter_outliers:

@@ -156,7 +156,7 @@ def summary_detailed(
         categ_type = pd.CategoricalDtype(categories=sorted_categs, ordered=True)
         rmses_df[category] = pd.Series(rmses_df[category], dtype=categ_type)
         rmses_df = rmses_df.sort_values(by=[category])
-        plot_detailed(rmses_df, target, path_plot, category)
+        # plot_detailed(rmses_df, target, path_plot, category)
 
     return summary_region_sector
 
@@ -194,7 +194,7 @@ def scopes_report(
         "company_id",
         "company_name",
         "ticker",
-        # "lei",
+        "lei",
         "fiscal_year",
     ]
 
@@ -204,42 +204,41 @@ def scopes_report(
         train=True,
         restricted_features=restricted_features,
     )
+
+    
     final_dataset = set_columns(final_dataset, features)
 
     final_dataset_train = target_preprocessing(final_dataset, target)
     final_model = best_model.fit(
         final_dataset_train[features], final_dataset_train[f"{target}_log"]
     )
-    # dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
     final_y_pred = final_model.predict(final_dataset[features])
-    
 
     if customized_model : 
         df_uncertainty = uncertainty_est(final_dataset, final_y_pred, final_dataset[f"{target}_log"], confidence_multiplier=1.64)
         cols = ["y_lower", "y_upper", "y_mean"]
     
         for col in cols : 
-            df_uncertainty[col] = np.power(10, df_uncertainty[col] + 1)
+            df_uncertainty[col] = np.power(10, df_uncertainty[col] ) -1
         
-        columns_to_keep = ["company_id","company_name","ticker","fiscal_year","y_lower", "y_upper", "y_mean"]
+        columns_to_keep = ["company_id","company_name","ticker","lei","fiscal_year","y_lower", "y_upper", "y_mean"]
         df_uncertainty = df_uncertainty[columns_to_keep]
-        df_uncertainty.columns= ["company_id","company_name","ticker","fiscal_year",f"{target}_estimated_lower_bound",f"{target}_estimated_upper_bound",f"{target}_estimated"]
+        df_uncertainty.columns= ["company_id","company_name","ticker","lei","fiscal_year",f"{target}_estimated_lower_bound",f"{target}_estimated_upper_bound",f"{target}_estimated"]
         final_y_pred =final_y_pred [:,0]
 
         with open(path_models + f"{target}_model.pkl", "wb") as f:
             pickle.dump(best_model, f)
         final_dataset_summary = final_dataset[lst]
-        final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
-        final_dataset_uncert = pd.merge(final_dataset_summary,df_uncertainty, on = lst + [f"{target}_estimated"], how = "left" )
+        # final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred )- 1
+        final_dataset_uncert = pd.merge(final_dataset_summary,df_uncertainty, on = lst , how = "left" )
         final_dataset_uncert= final_dataset_uncert.sort_values(by=["company_name","fiscal_year"], ascending=False)
-
         estimated_scopes.append(final_dataset_uncert)
     else : 
         with open(path_models + f"{target}_model.pkl", "wb") as f:
             pickle.dump(best_model, f)
         final_dataset_summary = final_dataset[lst]
         # final_dataset_summary = final_dataset[lst]
-        final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
+        final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred )-1
         estimated_scopes.append(final_dataset_summary)
     return estimated_scopes, lst
 
@@ -350,7 +349,7 @@ def best_model_analysis(
     if customized_model : 
         y_pred_best =y_pred_best[:,0]
 
-    plot(best_model, X_train, y_test, y_pred_best, path_plot, target, customized_model)
+    # plot(best_model, X_train, y_test, y_pred_best, path_plot, target, customized_model)
 
     metrics_scope = summary_detailed(
         X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot
@@ -400,8 +399,8 @@ def results(
         by=["company_id"]
     )
     merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
-    profile = ProfileReport(merged_estimated_scopes, minimal=True)
-    profile.to_file(path_results + "scopes_summary.html")
+    # profile = ProfileReport(merged_estimated_scopes, minimal=True)
+    # profile.to_file(path_results + "scopes_summary.html")
     merged_estimated_scopes.to_csv(path_results + "estimated_scopes.csv", index=False)
     summary_metrics_detailed.to_csv(
         path_results + "summary_metrics_detail.csv", index=False
@@ -462,6 +461,7 @@ def uncertainty_est(initial_dataset, y_pred, y_test, confidence_multiplier):
         "company_id": initial_dataset["company_id"],
         "company_name": initial_dataset["company_name"],
         "ticker": initial_dataset["ticker"],
+        "lei": initial_dataset["lei"],
         "fiscal_year": initial_dataset["fiscal_year"],
         "y_true": y_test,
         "y_mean":mean_y_pred,

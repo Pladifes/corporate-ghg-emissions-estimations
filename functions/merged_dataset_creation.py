@@ -27,26 +27,26 @@ def merge_datasets(
         carbon_pricing,
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["tr_name", "fiscal_year"],
+        right_on=["country", "fiscal_year"],
     )
     df = pd.merge(
         df,
-        fuel_intensity[["area", "year", "fuel_intensity"]],
+        fuel_intensity[["country", "year", "fuel_intensity"]],
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["area", "year"],
+        right_on=["country", "year"],
     )
     df_merged = pd.merge(
         df,
-        income_group[["tr_name", "income_group", "fiscal_year"]],
+        income_group[["country", "income_group", "fiscal_year"]],
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["tr_name", "fiscal_year"],
+        right_on=["country", "fiscal_year"],
     )
     mapping_dict = region_mapping.set_index("country").to_dict()["region"]
     df_merged["region"] = df_merged["country_hq"].apply(lambda x: mapping_dict[x])
 
-    df_merged.drop(["tr_name_y", "tr_name_x"], axis=1, inplace=True)
+    df_merged.drop(["country_y", "country_x"], axis=1, inplace=True)
 
     return df_merged
 

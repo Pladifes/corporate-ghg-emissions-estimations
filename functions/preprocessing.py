@@ -386,7 +386,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                         count += 1
 
     return data_new
-
+        
 
 def encoding(df, path_intermediary, train, restricted_features):
     """
