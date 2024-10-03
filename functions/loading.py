@@ -48,7 +48,7 @@ def assert_input_format(df):
 
 
 def load_data(
-    filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
+     filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False, predict = False,
 ):
     """
     Load pre-downloaded datasets from the specified path or construct them if missing.
@@ -73,6 +73,7 @@ def load_data(
             path + "cogem_preprocessed_dataset.parquet"
         )
 
+
     except FileNotFoundError:
         print("File not found, constructing it")
 
@@ -91,9 +92,15 @@ def load_data(
             input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
         )
         if save:
-            preprocessed_dataset.to_parquet(
-                path + "cogem_preprocessed_dataset.parquet"
+            if predict :
+                preprocessed_dataset.to_parquet(
+                path + "predict_dataset.parquet"
             )
+            else :
+                preprocessed_dataset.to_parquet(
+                    path + "cogem_preprocessed_dataset.parquet"
+                )
+                
 
     if filter_outliers:
         for target in ["cf1", "cf2", "cf3", "cf123"]:

@@ -193,8 +193,8 @@ def scopes_report(
     lst = [
         "company_id",
         "company_name",
-        "ticker",
-        "lei",
+        # "ticker",
+        # "lei",
         "fiscal_year",
     ]
 
@@ -221,9 +221,9 @@ def scopes_report(
         for col in cols : 
             df_uncertainty[col] = np.power(10, df_uncertainty[col] ) -1
         
-        columns_to_keep = ["company_id","company_name","ticker","lei","fiscal_year","y_lower", "y_upper", "y_mean"]
+        columns_to_keep = ["company_id","company_name","fiscal_year","y_lower", "y_upper", "y_mean"]
         df_uncertainty = df_uncertainty[columns_to_keep]
-        df_uncertainty.columns= ["company_id","company_name","ticker","lei","fiscal_year",f"{target}_estimated_lower_bound",f"{target}_estimated_upper_bound",f"{target}_estimated"]
+        df_uncertainty.columns= ["company_id","company_name","fiscal_year",f"{target}_estimated_lower_bound",f"{target}_estimated_upper_bound",f"{target}_estimated"]
         final_y_pred =final_y_pred [:,0]
 
         with open(path_models + f"{target}_model.pkl", "wb") as f:
@@ -460,8 +460,8 @@ def uncertainty_est(initial_dataset, y_pred, y_test, confidence_multiplier):
     df_test =  pd.DataFrame({
         "company_id": initial_dataset["company_id"],
         "company_name": initial_dataset["company_name"],
-        "ticker": initial_dataset["ticker"],
-        "lei": initial_dataset["lei"],
+        # "ticker": initial_dataset["ticker"],
+        # "lei": initial_dataset["lei"],
         "fiscal_year": initial_dataset["fiscal_year"],
         "y_true": y_test,
         "y_mean":mean_y_pred,
@@ -486,8 +486,10 @@ def uncertainty_analysis(df_train, df_test, target, difference_mean_train_dict,c
     difference_mean_test_dict[target] = df_test["difference"].mean()
 
     df_couvrage = pd.DataFrame({
+        
         "Covrage train": couvrage_train_dict.values(),
         "Covrage test": couvrage_test_dict.values(),
+
         "Difference mean train": difference_mean_train_dict.values(),
         "Difference mean test": difference_mean_test_dict.values()
         })
