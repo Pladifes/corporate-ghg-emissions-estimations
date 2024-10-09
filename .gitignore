@@ -151,7 +151,9 @@ GHG_estimation_tests_all.ipynb
 
 Model_evaluation.ipynb
 
-results_v1/
 results/
+results_v1/
 data/
+data_v1/
 models/
+models_v1/
