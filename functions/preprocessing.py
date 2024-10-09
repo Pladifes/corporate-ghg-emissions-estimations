@@ -61,15 +61,17 @@ def df_split(df, path_benchmark):
         mask = df["company_name"].isin(benchmark_lst)
         df_test = df[mask]
         df_train = df[~mask]
+        print("Constructing benchmark")
     except FileNotFoundError:
+        print("File not found")
         # Take 20% of data if no benchmark is available
-        names_shuffle = df["company_name"].sample(frac=1)[: int(len(df) / 5)]
-        mask = df["company_name"].isin(names_shuffle)
-        df_test = df[mask]
-        df_train = df[~mask]
-        for sector in df_test.gics_name.unique():
-            if sector not in df_train.gics_name.unique():
-                df_test = df_test[df_test.gics_name != sector]
+        # names_shuffle = df["company_name"].sample(frac=1)[: int(len(df) / 5)]
+        # mask = df["company_name"].isin(names_shuffle)
+        # df_test = df[mask]
+        # df_train = df[~mask]
+        # for sector in df_test.gics_name.unique():
+        #     if sector not in df_train.gics_name.unique():
+        #         df_test = df_test[df_test.gics_name != sector]
     return df_train, df_test
 
 
@@ -171,6 +173,7 @@ def label_final_co2_law(row):
         return "has_not_implemented_CO2Law"
 
 
+
 def processingrawdata(data_old, restricted_features, train):
     """
     Process raw data by applying various transformations and generating dummy variables.
@@ -197,12 +200,15 @@ def processingrawdata(data_old, restricted_features, train):
         lambda row: label_final_co2_law(row), axis=1
     )
 
-    if not restricted_features or train :
-        data_new["gics_group"] = data_new["gics_group"].astype(str)
-        data_new["gics_sector"] = data_new["gics_sector"].astype(str)
-        data_new["gics_ind"] = data_new["gics_ind"].astype(str)
-
-    data_new["gics_sub_ind"] = data_new["gics_sub_ind"].astype(str)
+    if not restricted_features or train : 
+        ####################
+        data_new["TRBC_industry_all_codes"] = data_new["TRBC_industry_all_codes"].astype(str)
+        data_new["TRBC_industry_group_all_codes"] = data_new["TRBC_industry_group_all_codes"].astype(str)
+        data_new["TRBC_business_sector_all_codes"] = data_new["TRBC_business_sector_all_codes"].astype(str)
+        data_new["TRBC_economic_sector_all_codes"] = data_new["TRBC_economic_sector_all_codes"].astype(str)
+        
+    data_new["TRBC_activity_all_codes"] = data_new["TRBC_activity_all_codes"].astype(str)    
+    ####################
 
     data_new["income_group"] = data_new["income_group"].fillna(
         data_new["income_group"].value_counts().index[0]
@@ -218,22 +224,29 @@ def processingrawdata(data_old, restricted_features, train):
     )
 
     if not restricted_features:
+        
+        ####################
         data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["gics_sector"], prefix="gics_sector")],
+            [data_new, pd.get_dummies(data_new["TRBC_industry_all_codes"], prefix="TRBC_industry_all_codes")],
             axis=1,
         )
         data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["gics_group"], prefix="gics_group")],
-            axis=1,
+            [data_new, pd.get_dummies(data_new["TRBC_industry_group_all_codes"], prefix="TRBC_industry_group_all_codes")], axis=1
         )
+        
         data_new = pd.concat(
-            [data_new, pd.get_dummies(data_new["gics_ind"], prefix="gics_ind_")], axis=1
+            [data_new, pd.get_dummies(data_new["TRBC_business_sector_all_codes"], prefix="TRBC_business_sector_all_codes")], axis=1
         )
-
+        
+        data_new = pd.concat(
+            [data_new, pd.get_dummies(data_new["TRBC_economic_sector_all_codes"], prefix="TRBC_economic_sector_all_codes")], axis=1
+        )
+        
     data_new = pd.concat(
-        [data_new, pd.get_dummies(data_new["gics_sub_ind"], prefix="gics_sub_ind")],
+        [data_new, pd.get_dummies(data_new["TRBC_activity_all_codes"], prefix="TRBC_activity_all_codes")],
         axis=1,
     )
+    ####################
 
     return data_new
 
@@ -265,15 +278,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     data_new = data_old.copy()
     if train:
-        nb_per_sub_ind = data_new.groupby(["gics_sub_ind"])[columnlist].count()
+        nb_per_act = data_new.groupby(["TRBC_activity_all_codes"])[columnlist].count()
         dict_mean_to_impute = pd.DataFrame(columns=columnlist).to_dict()
 
         for column in columnlist:
             dict_mean_to_impute_col = {}
 
-            for sub_ind in nb_per_sub_ind[column].index:
-                index_to_fill = data_new[data_new.gics_sub_ind == sub_ind].index
-                data_temp = data_new[data_new.gics_sub_ind == sub_ind][
+            for act in nb_per_act[column].index:
+                index_to_fill = data_new[data_new.TRBC_activity_all_codes == act].index
+                data_temp = data_new[data_new.TRBC_activity_all_codes == act][
                     [column, "revenue"]
                 ]
                 data_temp["revenue_Bkt"] = pd.qcut(
@@ -281,15 +294,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                 )
 
                 if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                    ind = sub_ind[:-4] + sub_ind[-2:]
-                    data_temp = data_new[data_new.gics_ind == ind][[column, "revenue"]]
+                    ind = act[:-4] + act[-2:]
+                    data_temp = data_new[data_new.TRBC_industry_all_codes == ind][[column, "revenue"]]
                     data_temp["revenue_Bkt"] = pd.qcut(
                         data_temp.revenue, 10, duplicates="drop"
                     )
 
                     if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                        grp = ind[:-4] + ind[-2:]
-                        data_temp = data_new[data_new.gics_group == grp][
+                        ind_grp = ind[:-4] + ind[-2:]
+                        data_temp = data_new[data_new.TRBC_industry_group_all_codes == ind_grp][
                             [column, "revenue"]
                         ]
                         data_temp["revenue_Bkt"] = pd.qcut(
@@ -297,25 +310,49 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                         )
 
                         if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                            sect = grp[:-4] + grp[-2:]
-                            data_temp = data_new[data_new.gics_sector == sect][
+                            bus_sect = ind_grp[:-4] + ind_grp[-2:]
+                            data_temp = data_new[data_new.TRBC_business_sector_all_codes == bus_sect][
                                 [column, "revenue"]
                             ]
                             data_temp["revenue_Bkt"] = pd.qcut(
                                 data_temp.revenue, 10, duplicates="drop"
                             )
-                            filled_sub_ind_values = data_new.loc[
-                                index_to_fill, column
-                            ].fillna(
-                                data_temp.groupby("revenue_Bkt")[column].transform(
-                                    "mean"
+                            
+                            if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
+                                eco_sect = bus_sect[:-4] + bus_sect[-2:]
+                                data_temp = data_new[data_new.TRBC_economic_sector_all_codes == eco_sect][
+                                    [column, "revenue"]
+                                ]
+                                data_temp["revenue_Bkt"] = pd.qcut(
+                                    data_temp.revenue, 10, duplicates="drop"
                                 )
-                            )
-                            data_new.loc[index_to_fill, column] = filled_sub_ind_values
+                                                 
+                                filled_sub_ind_values = data_new.loc[
+                                    index_to_fill, column
+                                ].fillna(
+                                    data_temp.groupby("revenue_Bkt")[column].transform(
+                                        "mean"
+                                    )
+                                )
+                                data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                            temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
-                            temp_means.index = temp_means.index.astype(str)
-                            dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
+                                temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+                                temp_means.index = temp_means.index.astype(str)
+                                dict_mean_to_impute_col[act] = temp_means.to_dict()
+                                
+                            else:
+                                filled_sub_ind_values = data_new.loc[
+                                    index_to_fill, column
+                                ].fillna(
+                                    data_temp.groupby("revenue_Bkt")[column].transform(
+                                        "mean"
+                                    )
+                                )
+                                data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+                                temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+                                temp_means.index = temp_means.index.astype(str)
+                                dict_mean_to_impute_col[act] = temp_means.to_dict()
 
                         else:
                             filled_sub_ind_values = data_new.loc[
@@ -329,7 +366,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                             temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                             temp_means.index = temp_means.index.astype(str)
-                            dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
+                            dict_mean_to_impute_col[act] = temp_means.to_dict()
 
                     else:
                         filled_sub_ind_values = data_new.loc[
@@ -341,7 +378,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                         temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                         temp_means.index = temp_means.index.astype(str)
-                        dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
+                        dict_mean_to_impute_col[act] = temp_means.to_dict()
 
                 else:
                     filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
@@ -351,7 +388,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                     temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                     temp_means.index = temp_means.index.astype(str)
-                    dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
+                    dict_mean_to_impute_col[act] = temp_means.to_dict()
 
             dict_mean_to_impute[column] = dict_mean_to_impute_col
 
@@ -363,15 +400,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
             df_means = json.load(fp)
         for column in columnlist:
             data_temp = data_new[data_new[column].isna()][
-                [column, "gics_sub_ind", "revenue"]
+                [column, "TRBC_activity_all_codes", "revenue"]
             ]
 
-            for sub_ind in data_temp.gics_sub_ind.unique():
-                for i in data_temp[data_temp.gics_sub_ind == sub_ind].index:
+            for act in data_temp.TRBC_activity_all_codes.unique():
+                for i in data_temp[data_temp.TRBC_activity_all_codes == act].index:
                     count = 0
                     temp_revenue = data_new.loc[i, "revenue"]
 
-                    for interval in df_means[column][sub_ind].keys():
+                    for interval in df_means[column][act].keys():
                         borne_inf, borne_sup = float(interval.split(",")[0][1:]), float(
                             interval.split(",")[1][:-1]
                         )
@@ -380,7 +417,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                         if count == 9:
                             borne_sup = np.inf
                         if borne_inf <= temp_revenue and temp_revenue <= borne_sup:
-                            data_new.loc[i, column] = df_means[column][sub_ind][
+                            data_new.loc[i, column] = df_means[column][act][
                                 interval
                             ]
                         count += 1
@@ -409,6 +446,7 @@ def encoding(df, path_intermediary, train, restricted_features):
     - df (pandas DataFrame): The encoded and processed DataFrame ready for modeling.
 
     """
+
     if restricted_features:
         FillList = ["asset", "ebit"]
         LogList = [
@@ -469,6 +507,7 @@ def encoding(df, path_intermediary, train, restricted_features):
         path_intermediary,
         train=train,
     )
+
     df = logtransform(df, LogList, path_intermediary, train=train)
 
     df.columns = df.columns.str.replace(r"\W", "_")
@@ -522,26 +561,49 @@ def outliers_preprocess(
     index_to_drop = []
 
     df[f"intensity_{scope}"] = np.log(df[scope] / df["revenue"])
-
-    for subindustry in df["gics_sub_ind"].unique():
-        subset = df[df["gics_sub_ind"] == subindustry]
+    
+    ####################
+    enough_obs = 0
+    not_enough_obs = 0
+    ####################
+    
+    for industry in df["TRBC_industry_all_codes"].unique():
+        subset = df[df["TRBC_industry_all_codes"] == industry]
         if len(subset) > 10:
-            median_subind = subset[f"intensity_{scope}"].quantile(0.50)
+            
+            ##############
+            enough_obs += 1 
+            ##############
+            
+            median_act = subset[f"intensity_{scope}"].quantile(0.50)
             Q1 = subset[f"intensity_{scope}"].quantile(0.25)
             Q3 = subset[f"intensity_{scope}"].quantile(0.75)
             IQR = Q3 - Q1
 
-            max_subind = median_subind + threshold_over * IQR
-            min_subind = median_subind - threshold_under * IQR
+            max_act = median_act + threshold_over * IQR
+            min_act = median_act - threshold_under * IQR
 
-            condition = (subset[f"intensity_{scope}"] > max_subind) | (
-                subset[f"intensity_{scope}"] < min_subind
+            condition = (subset[f"intensity_{scope}"] > max_act) | (
+                subset[f"intensity_{scope}"] < min_act
             )
 
             if any(condition):
                 index_to_drop.extend(subset.loc[condition].index.tolist())
+        
+        ##############
+        else:        
+            not_enough_obs += 1 
+        ##############
 
     df = df[~(df.index.isin(index_to_drop))]
+    
+    ##############
+    print(f"{scope} (outliers preprocess): enough observations : {enough_obs}")
+    print(f"{scope} (outliers preprocess): not enough observations : {not_enough_obs}")
+    nb = len(index_to_drop)
+    print(f"Number of observations dropped: {str(nb)}")
+    ##############
+    
     return df
 
 
@@ -577,59 +639,79 @@ def custom_train_split(
     - df_test: The original test set with the selected features.
 
     """
-    try:
+    # try:
         
-        df_train = pd.read_parquet(path_intermediary + f"df_train_{target}.parquet")
-        df_test = pd.read_parquet(path_intermediary + f"df_test_{target}.parquet")
+    #     df_train = pd.read_parquet(path_intermediary + f"df_train_{target}.parquet")
+    #     df_test = pd.read_parquet(path_intermediary + f"df_test_{target}.parquet")
 
-        features = pd.read_csv(path_intermediary + f"features_{target}.csv")["features"].tolist()
-        print("Using pre created preprocessed files")
+    #     features = pd.read_csv(path_intermediary + f"features_{target}.csv")["features"].tolist()
+    #     print("Using pre created preprocessed files")
 
-    except FileNotFoundError:
-        print("Files not found, constructing them")
+    # except FileNotFoundError:
+    print("Files not found, constructing them")
 
-        df_train_before_imputation, df_test_before_imputation = df_split(
-            dataset, path_benchmark
-        )
-
-        df_train, df_test = (
-            encoding(
-                
-                df_train_before_imputation,
-                path_intermediary,
-                train=True,
-                restricted_features=restricted_features,
-            ),
-            encoding(
-                
-                df_test_before_imputation,
-                path_intermediary,
-                train=False,
-                restricted_features=restricted_features,
-            ),
-        )
-
-        features = selected_features(
-            target,
-            df_train,
-            df_test,
+    df_train_before_imputation, df_test_before_imputation = df_split(
+        dataset, path_benchmark
+    )
+    print("train before imputation : ", str(df_train_before_imputation.shape))
+    print("test before imputation : ", str(df_test_before_imputation.shape))
+    
+    df_train, df_test = (
+        encoding(
+            
+            df_train_before_imputation,
             path_intermediary,
-            extended_features=extended_features,
-            selec_sect=selec_sect,
-        )
-        df_train, df_test = set_columns(df_train, features), set_columns(
-            df_test, features
-        )
+            train=True,
+            restricted_features=restricted_features,
+        ),
+        encoding(
+            
+            df_test_before_imputation,
+            path_intermediary,
+            train=False,
+            restricted_features=restricted_features,
+        ),
+    )
+    
+    print("train 1 : ", str(df_train.shape))
+    print("test 1 : ", str(df_test.shape))
 
-        df_train.index.name = "saved_index"
-        df_test.index.name = "saved_index"
+    features = selected_features(
+        target,
+        df_train,
+        df_test,
+        path_intermediary,
+        extended_features=extended_features,
+        selec_sect=selec_sect,
+    )
+    df_train, df_test = set_columns(df_train, features), set_columns(
+        df_test, features
+    )
 
-        df_train.to_parquet(path_intermediary + f"df_train_{target}.parquet")
-        df_test.to_parquet(path_intermediary + f"df_test_{target}.parquet")
+    df_train.index.name = "saved_index"
+    df_test.index.name = "saved_index"
+    
+    print("train 2 : ", str(df_train.shape))
+    print("test 2 : ", str(df_test.shape))
+    
+    print("train avant target_preprocessing : ", str(df_train.shape))
+    print("test avant target_preprocessing : ", str(df_test.shape))
+
+    ######################################
+    df_train.to_parquet(path_intermediary + f"df_train_{target}_avant_target_preprocessing.parquet")
+    df_test.to_parquet(path_intermediary + f"df_test_{target}_avant_target_preprocessing.parquet")
+    ######################################
+    
 
     df_train, df_test = target_preprocessing(df_train, target), target_preprocessing(
         df_test, target
     )
+    
+    df_train.to_parquet(path_intermediary + f"df_train_{target}.parquet")
+    df_test.to_parquet(path_intermediary + f"df_test_{target}.parquet")
+    
+    print("train apres target_preprocessing : ", str(df_train.shape))
+    print("test apres target_preprocessing : ", str(df_test.shape))
     if target in ["cf1", "cf3", "cf2", "cf123"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target+"_log"]

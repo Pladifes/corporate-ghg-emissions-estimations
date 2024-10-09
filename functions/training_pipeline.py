@@ -109,6 +109,9 @@ def training_pipeline(
             selec_sect=training_parameters["selec_sect"],
             restricted_features=restricted_features,
         )
+        print("train : ", str(df_train.shape))
+        print("test : ", str(df_test.shape))
+        print("preprocessed : ", str(preprocessed_dataset.shape))
         logger.info("Preprocessing done")
         seed = training_parameters["seed"]
         n_iter = training_parameters["n_iter"]
@@ -162,6 +165,14 @@ def training_pipeline(
                 path_models,
                 path_rawdata,
             )
+            
+            
+            ########################
+            print(f"X train shape : {str(X_train.shape)}")
+            print(f"X test shape : {str(X_test.shape)}")
+            print(f"df test shape : {str(df_test.shape)}")
+            print(f"df preprocessed dataset shape : {str(preprocessed_dataset.shape)}")
+            #########################
 
 
     if save:

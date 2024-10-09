@@ -145,3 +145,13 @@ GHG_estimation_tests_all.ipynb
 *.png
 *.pkl
 *.html
+
+
+# ajout tiphanie
+
+Model_evaluation.ipynb
+
+results_v1/
+results/
+data/
+models/

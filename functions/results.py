@@ -7,7 +7,7 @@ from sklearn.metrics import (
     mean_absolute_error,
     mean_absolute_percentage_error,
 )
-from pandas_profiling import ProfileReport
+# from pandas_profiling import ProfileReport
 
 from functions.preprocessing import encoding
 from functions.preprocessing import set_columns
@@ -53,15 +53,17 @@ def summary_detailed(
     X_test_copy = X_test.copy()
     X_test_copy["y_pred"] = y_pred
     X_test_copy["y_test"] = y_test
-    X_test_copy["sub_sector"] = df_test_copy.gics_name.values
+    # X_test_copy["TRBC_act_name"] = df_test_copy.TRBC_activity_name.values
+    X_test_copy["TRBC_ind_name"] = df_test_copy.TRBC_industry_name.values
     X_test_copy["revenue_bucket"] = df_test_copy.revenue_buckets.values
     X_test_copy["region"] = df_test_copy.region.values
     X_test_copy["country"] = df_test_copy.country_hq.values
     X_test_copy["year"] = df_test_copy.fiscal_year.values
+     
 
     if not restricted_features:
         df_test_copy["sectors"] = (
-            df_test_copy["gics_sector"].astype(float).apply(gics_to_name)
+            df_test_copy["TRBC_economic_sector_all_codes"].astype(float).apply(trbc_to_name)
         )
         X_test_copy["energy_consumed"] = df_test_copy.energy_consumed.isna().values
         X_test_copy["energy_produced"] = df_test_copy.energy_produced.isna().values
@@ -71,79 +73,95 @@ def summary_detailed(
             "region",
             "country",
             "industry",
-            "sub_sector",
+            "TRBC_ind_name",
             "year",
             "energy_consumed",
             "energy_produced",
         ]
     else:
-        categories = ["revenue_bucket", "region", "country", "sub_sector", "year"]
+        categories = ["revenue_bucket", "region", "country", "TRBC_ind_name", "year"]
+     
+     
+        
+    ######### A supprimer
+    
+    X_test_copy.to_parquet("data/Refinitiv_extraction/X_test_copy.parquet")
+    
+    
+    ########### 
 
     for category in categories:
+        
         rmses_df = pd.DataFrame([], columns=["rmses", category])
         unique = list(X_test_copy[category].unique())
         for i, value in enumerate(unique):
-            mask = X_test_copy[category] == value
-            rmse = np.sqrt(
-                mean_squared_error(
+            
+            ##################
+            if (value != None) & pd.notnull(value):
+            ##################
+                
+                mask = X_test_copy[category] == value
+                
+                rmse = np.sqrt(
+                    mean_squared_error(
+                        X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+                    )
+                )
+                mse = mean_squared_error(
                     X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
                 )
-            )
-            mse = mean_squared_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
-            mae = mean_absolute_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
-            mape = mean_absolute_percentage_error(
-                X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
-            )
-            r2 = r2_score(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
-            rmses = []
-            l_test = len(X_test_copy[mask]["y_test"])
-            if len(X_test_copy[mask]) >= n_split:
-                for k in range(n_split):
-                    rmses.append(
-                        mean_squared_error(
-                            X_test_copy[mask]["y_test"][
-                                int(k * l_test / n_split) : int(
-                                    (k + 1) * l_test / n_split
-                                )
-                            ],
-                            X_test_copy[mask]["y_pred"][
-                                int(k * l_test / n_split) : int(
-                                    (k + 1) * l_test / n_split
-                                )
-                            ],
-                            squared=False,
-                        )
-                    )
-                std = np.std(rmses)
-                rmses_df_temp = pd.DataFrame(
-                    [[rmse, value] for rmse in rmses], columns=["rmses", category]
+                mae = mean_absolute_error(
+                    X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
                 )
-                rmses_df = pd.concat([rmses_df, rmses_df_temp])
-            else:
-                std = np.nan
+                mape = mean_absolute_percentage_error(
+                    X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"]
+                )
+                r2 = r2_score(X_test_copy[mask]["y_test"], X_test_copy[mask]["y_pred"])
+                rmses = []
+                l_test = len(X_test_copy[mask]["y_test"])
+                if len(X_test_copy[mask]) >= n_split:
+                    for k in range(n_split):
+                        rmses.append(
+                            mean_squared_error(
+                                X_test_copy[mask]["y_test"][
+                                    int(k * l_test / n_split) : int(
+                                        (k + 1) * l_test / n_split
+                                    )
+                                ],
+                                X_test_copy[mask]["y_pred"][
+                                    int(k * l_test / n_split) : int(
+                                        (k + 1) * l_test / n_split
+                                    )
+                                ],
+                                squared=False,
+                            )
+                        )
+                    std = np.std(rmses)
+                    rmses_df_temp = pd.DataFrame(
+                        [[rmse, value] for rmse in rmses], columns=["rmses", category]
+                    )
+                    rmses_df = pd.concat([rmses_df, rmses_df_temp])
+                else:
+                    std = np.nan
 
-            summary = pd.DataFrame(
-                {
-                    "category": category,
-                    "scope": target,
-                    "category_name": value,
-                    "RMSE": rmse,
-                    "MSE": mse,
-                    "MAE": mae,
-                    "MAPE": mape,
-                    "R2": r2,
-                    "StandardDeviation": std,
-                },
-                index=[0],
-            )
+                summary = pd.DataFrame(
+                    {
+                        "category": category,
+                        "scope": target,
+                        "category_name": value,
+                        "RMSE": rmse,
+                        "MSE": mse,
+                        "MAE": mae,
+                        "MAPE": mape,
+                        "R2": r2,
+                        "StandardDeviation": std,
+                    },
+                    index=[0],
+                )
 
-            summary_region_sector = pd.concat(
-                [summary_region_sector, summary], ignore_index=True
-            )
+                summary_region_sector = pd.concat(
+                    [summary_region_sector, summary], ignore_index=True
+                )
 
         if category in ["energy_consumed", "energy_produced"]:
             rmses_df = rmses_df.replace({True: "No values", False: "With values"})
@@ -197,6 +215,9 @@ def scopes_report(
         # "lei",
         "fiscal_year",
     ]
+    
+    # with open(path_models + f"{target}_model.pkl", "wb") as f:
+    #     pickle.dump(best_model, f)
 
     final_dataset = encoding(
         dataset,
@@ -210,13 +231,14 @@ def scopes_report(
     final_model = best_model.fit(
         final_dataset_train[features], final_dataset_train[f"{target}_log"]
     )
-    # dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
+    dataset_predict = pd.read_parquet(path_rawdata + "predict_dataset.parquet")
     final_y_pred = final_model.predict(final_dataset[features])
 
     with open(path_models + f"{target}_model.pkl", "wb") as f:
         pickle.dump(best_model, f)
+        
     final_dataset_summary = final_dataset[lst]
-    final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred + 1)
+    final_dataset_summary.loc[:, f"{target}_estimated"] = np.power(10, final_y_pred) - 1
     final_dataset_summary = final_dataset_summary.sort_values(by = ["company_name","fiscal_year"], ascending= False)
     estimated_scopes.append(final_dataset_summary)
 
@@ -369,6 +391,12 @@ def results(
     nb_targets = len(estimated_scopes)
     merged_estimated_scopes = estimated_scopes[0]
     for k in range(1, nb_targets):
+        
+        ####################
+        print(k) 
+        print(estimated_scopes[k].shape)
+        ####################
+        
         merged_estimated_scopes = pd.merge(
             merged_estimated_scopes, estimated_scopes[k], on=lst, how="outer"
         )
@@ -376,8 +404,15 @@ def results(
         by=["company_id"]
     )
     merged_estimated_scopes = merged_estimated_scopes.reset_index(drop=True)
-    profile = ProfileReport(merged_estimated_scopes, minimal=True)
-    profile.to_file(path_results + "scopes_summary.html")
+    
+    #############################
+    print(f"merged estimated scopes : {str(merged_estimated_scopes.shape)}")
+    #############################
+    
+    
+    
+    # profile = ProfileReport(merged_estimated_scopes, minimal=True)
+    # profile.to_file(path_results + "scopes_summary.html")
     merged_estimated_scopes.to_csv(path_results + "estimated_scopes.csv", index=False)
     summary_metrics_detailed.to_csv(
         path_results + "summary_metrics_detail.csv", index=False
@@ -389,7 +424,7 @@ def results(
     df_summary_final.to_csv(path_results + "summary_metrics.csv", index=False)
 
 
-def gics_to_name(gics_sector):
+def trbc_to_name(trbc_eco_sector):
     """
     Converts a GICS (Global Industry Classification Standard) sector code into the corresponding sector name.
 
@@ -401,28 +436,30 @@ def gics_to_name(gics_sector):
              any known GICS sector, the input code itself is returned as a string.
     """
 
-    if gics_sector == 10.0:
+    if trbc_eco_sector == 50.0:
         return "Energy"
-    elif gics_sector == 15.0:
-        return "Materials"
-    elif gics_sector == 20.0:
+    elif trbc_eco_sector == 51.0:
+        return "Basic Materials"
+    elif trbc_eco_sector == 52.0:
         return "Industrials"
-    elif gics_sector == 25.0:
-        return "Cons. Discretionary"
-    elif gics_sector == 30.0:
-        return "Cons. Staples"
-    elif gics_sector == 35.0:
-        return "Health Care"
-    elif gics_sector == 40.0:
+    elif trbc_eco_sector == 53.0:
+        return "Consumer Cyclicals"
+    elif trbc_eco_sector == 54.0:
+        return "Consumer Non-Cyclicals"
+    elif trbc_eco_sector == 55.0:
         return "Financials"
-    elif gics_sector == 45.0:
-        return "IT"
-    elif gics_sector == 50.0:
-        return "Telecommunication"
-    elif gics_sector == 55.0:
+    elif trbc_eco_sector == 56.0:
+        return "Healthcare"
+    elif trbc_eco_sector == 57.0:
+        return "Technology"
+    elif trbc_eco_sector == 59.0:
         return "Utilities"
-    elif gics_sector == 60.0:
+    elif trbc_eco_sector == 60.0:
         return "Real Estate"
+    elif trbc_eco_sector == 62.0:
+        return "Government Activity"
+    elif trbc_eco_sector == 63.0:
+        return "Academic & Educational Services"
     else:
-        return gics_sector
+        return trbc_eco_sector
 
