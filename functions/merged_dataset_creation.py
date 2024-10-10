@@ -8,6 +8,7 @@ def merge_datasets(
     income_group,
     fuel_intensity,
     region_mapping,
+    trbc_dataset,
 ):
     """
     Merge multiple DataFrames containing diverse company-related data. The resulting DataFrame combines columns from each input DataFrame and introduces new columns.
@@ -27,28 +28,32 @@ def merge_datasets(
         carbon_pricing,
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["tr_name", "fiscal_year"],
+        right_on=["country", "fiscal_year"],
     )
     df = pd.merge(
         df,
-        fuel_intensity[["area", "year", "fuel_intensity"]],
+        fuel_intensity[["country", "year", "fuel_intensity"]],
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["area", "year"],
+        right_on=["country", "year"],
     )
     df_merged = pd.merge(
         df,
-        income_group[["tr_name", "income_group", "fiscal_year"]],
+        income_group[["country", "income_group", "fiscal_year"]],
         how="left",
         left_on=["country_hq", "fiscal_year"],
-        right_on=["tr_name", "fiscal_year"],
+        right_on=["country", "fiscal_year"],
     )
     mapping_dict = region_mapping.set_index("country").to_dict()["region"]
     df_merged["region"] = df_merged["country_hq"].apply(lambda x: mapping_dict[x])
 
-    df_merged.drop(["tr_name_y", "tr_name_x"], axis=1, inplace=True)
+    df_merged.drop(["country_y", "country_x"], axis=1, inplace=True)
 
-    return df_merged
+    df_merged_final = pd.merge(
+        df_merged, trbc_dataset, how="left", left_on="company_id", right_on="Instrument"
+)
+
+    return df_merged_final
 
 
 def add_variables(df):
@@ -132,7 +137,7 @@ def initial_preprocessing(df):
 
 
 def create_preprocessed_dataset(
-    input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
+    input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping,trbc_dataset
 ):
     """
     Creates a merged dataset from multiple data sources and performs preprocessing steps on it.
@@ -161,7 +166,7 @@ def create_preprocessed_dataset(
     - preprocessed_dataset (DataFrame): The preprocessed and merged dataset.
     """
     df_merged = merge_datasets(
-        input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
+        input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping,trbc_dataset
     )
 
     preprocessed_dataset = initial_preprocessing(df_merged)

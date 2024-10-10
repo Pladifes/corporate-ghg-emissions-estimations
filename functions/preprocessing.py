@@ -250,7 +250,6 @@ def processingrawdata(data_old, restricted_features, train):
 
     return data_new
 
-
 def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     Fill in missing values in a pandas DataFrame by using the mean of the corresponding group values.
@@ -278,15 +277,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
     """
     data_new = data_old.copy()
     if train:
-        nb_per_act = data_new.groupby(["TRBC_activity_all_codes"])[columnlist].count()
+        nb_per_sub_ind = data_new.groupby(["TRBC_industry_all_codes"])[columnlist].count()
         dict_mean_to_impute = pd.DataFrame(columns=columnlist).to_dict()
 
         for column in columnlist:
             dict_mean_to_impute_col = {}
 
-            for act in nb_per_act[column].index:
-                index_to_fill = data_new[data_new.TRBC_activity_all_codes == act].index
-                data_temp = data_new[data_new.TRBC_activity_all_codes == act][
+            for sub_ind in nb_per_sub_ind[column].index:
+                index_to_fill = data_new[data_new["TRBC_industry_all_codes"] == sub_ind].index
+                data_temp = data_new[data_new["TRBC_industry_all_codes"] == sub_ind][
                     [column, "revenue"]
                 ]
                 data_temp["revenue_Bkt"] = pd.qcut(
@@ -294,15 +293,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                 )
 
                 if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                    ind = act[:-4] + act[-2:]
-                    data_temp = data_new[data_new.TRBC_industry_all_codes == ind][[column, "revenue"]]
+                    ind = sub_ind[:-4] + sub_ind[-2:]
+                    data_temp = data_new[data_new["TRBC_industry_group_all_codes"] == ind][[column, "revenue"]]
                     data_temp["revenue_Bkt"] = pd.qcut(
                         data_temp.revenue, 10, duplicates="drop"
                     )
 
                     if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                        ind_grp = ind[:-4] + ind[-2:]
-                        data_temp = data_new[data_new.TRBC_industry_group_all_codes == ind_grp][
+                        grp = ind[:-4] + ind[-2:]
+                        data_temp = data_new[data_new["TRBC_business_sector_all_codes"] == grp][
                             [column, "revenue"]
                         ]
                         data_temp["revenue_Bkt"] = pd.qcut(
@@ -310,49 +309,25 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                         )
 
                         if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                            bus_sect = ind_grp[:-4] + ind_grp[-2:]
-                            data_temp = data_new[data_new.TRBC_business_sector_all_codes == bus_sect][
+                            sect = grp[:-4] + grp[-2:]
+                            data_temp = data_new[data_new["TRBC_economic_sector_all_codes"] == sect][
                                 [column, "revenue"]
                             ]
                             data_temp["revenue_Bkt"] = pd.qcut(
                                 data_temp.revenue, 10, duplicates="drop"
                             )
-                            
-                            if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
-                                eco_sect = bus_sect[:-4] + bus_sect[-2:]
-                                data_temp = data_new[data_new.TRBC_economic_sector_all_codes == eco_sect][
-                                    [column, "revenue"]
-                                ]
-                                data_temp["revenue_Bkt"] = pd.qcut(
-                                    data_temp.revenue, 10, duplicates="drop"
+                            filled_sub_ind_values = data_new.loc[
+                                index_to_fill, column
+                            ].fillna(
+                                data_temp.groupby("revenue_Bkt")[column].transform(
+                                    "mean"
                                 )
-                                                 
-                                filled_sub_ind_values = data_new.loc[
-                                    index_to_fill, column
-                                ].fillna(
-                                    data_temp.groupby("revenue_Bkt")[column].transform(
-                                        "mean"
-                                    )
-                                )
-                                data_new.loc[index_to_fill, column] = filled_sub_ind_values
+                            )
+                            data_new.loc[index_to_fill, column] = filled_sub_ind_values
 
-                                temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
-                                temp_means.index = temp_means.index.astype(str)
-                                dict_mean_to_impute_col[act] = temp_means.to_dict()
-                                
-                            else:
-                                filled_sub_ind_values = data_new.loc[
-                                    index_to_fill, column
-                                ].fillna(
-                                    data_temp.groupby("revenue_Bkt")[column].transform(
-                                        "mean"
-                                    )
-                                )
-                                data_new.loc[index_to_fill, column] = filled_sub_ind_values
-
-                                temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
-                                temp_means.index = temp_means.index.astype(str)
-                                dict_mean_to_impute_col[act] = temp_means.to_dict()
+                            temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+                            temp_means.index = temp_means.index.astype(str)
+                            dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                         else:
                             filled_sub_ind_values = data_new.loc[
@@ -366,7 +341,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                             temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                             temp_means.index = temp_means.index.astype(str)
-                            dict_mean_to_impute_col[act] = temp_means.to_dict()
+                            dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                     else:
                         filled_sub_ind_values = data_new.loc[
@@ -378,7 +353,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                         temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                         temp_means.index = temp_means.index.astype(str)
-                        dict_mean_to_impute_col[act] = temp_means.to_dict()
+                        dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
                 else:
                     filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
@@ -388,7 +363,7 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
 
                     temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
                     temp_means.index = temp_means.index.astype(str)
-                    dict_mean_to_impute_col[act] = temp_means.to_dict()
+                    dict_mean_to_impute_col[sub_ind] = temp_means.to_dict()
 
             dict_mean_to_impute[column] = dict_mean_to_impute_col
 
@@ -400,15 +375,15 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
             df_means = json.load(fp)
         for column in columnlist:
             data_temp = data_new[data_new[column].isna()][
-                [column, "TRBC_activity_all_codes", "revenue"]
+                [column, "TRBC_industry_all_codes", "revenue"]
             ]
 
-            for act in data_temp.TRBC_activity_all_codes.unique():
-                for i in data_temp[data_temp.TRBC_activity_all_codes == act].index:
+            for sub_ind in data_temp["TRBC_industry_all_codes"].unique():
+                for i in data_temp[data_temp["TRBC_industry_all_codes"] == sub_ind].index:
                     count = 0
                     temp_revenue = data_new.loc[i, "revenue"]
 
-                    for interval in df_means[column][act].keys():
+                    for interval in df_means[column][sub_ind].keys():
                         borne_inf, borne_sup = float(interval.split(",")[0][1:]), float(
                             interval.split(",")[1][:-1]
                         )
@@ -417,12 +392,185 @@ def fillmeanindustry(data_old, columnlist, path_intermediary, train):
                         if count == 9:
                             borne_sup = np.inf
                         if borne_inf <= temp_revenue and temp_revenue <= borne_sup:
-                            data_new.loc[i, column] = df_means[column][act][
+                            data_new.loc[i, column] = df_means[column][sub_ind][
                                 interval
                             ]
                         count += 1
 
     return data_new
+
+# def fillmeanindustry(data_old, columnlist, path_intermediary, train):
+#     """
+#     Fill in missing values in a pandas DataFrame by using the mean of the corresponding group values.
+
+#     This function fills missing values in the input DataFrame by utilizing the mean values of corresponding groups based on certain criteria.
+
+#     If 'train' is set to True, the function calculates the means for specified 'columnlist' within groups defined by 'gics_sub_ind' and 'revenue' percentiles. The calculated means are stored in a dictionary and saved to a JSON file in the 'path_intermediary' directory.
+
+#     If 'train' is False, the function retrieves the means from the saved JSON file and uses them to fill missing values in 'columnlist' based on the 'gics_sub_ind' and 'revenue' percentiles.
+
+#     Note:
+#     - The function handles missing values by grouping data based on 'gics_sub_ind' and 'revenue' percentiles and filling missing values with the mean of the corresponding group.
+#     - The specific columns in 'columnlist' may vary based on the application.
+#     - The 'path_intermediary' is used to store and retrieve intermediary files for data processing.
+
+    
+#     Parameters:
+#     - data_old (pandas DataFrame): The input data to be processed.
+#     - columnlist (list of strings): A list of column names for which missing values should be filled.
+#     - path_intermediary (str): The path to intermediary files used in data processing.
+#     - train (bool): A boolean flag indicating whether the data is part of the training set.
+
+#     Returns:
+#     - data_new (pandas DataFrame): The processed data with missing values filled in.
+#     """
+#     data_new = data_old.copy()
+#     if train:
+#         nb_per_act = data_new.groupby(["TRBC_activity_all_codes"])[columnlist].count()
+#         dict_mean_to_impute = pd.DataFrame(columns=columnlist).to_dict()
+
+#         for column in columnlist:
+#             dict_mean_to_impute_col = {}
+
+#             for act in nb_per_act[column].index:
+#                 index_to_fill = data_new[data_new.TRBC_activity_all_codes == act].index
+#                 data_temp = data_new[data_new.TRBC_activity_all_codes == act][
+#                     [column, "revenue"]
+#                 ]
+#                 data_temp["revenue_Bkt"] = pd.qcut(
+#                     data_temp.revenue, 10, duplicates="drop"
+#                 )
+
+#                 if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
+#                     ind = act[:-4] + act[-2:]
+#                     data_temp = data_new[data_new.TRBC_industry_all_codes == ind][[column, "revenue"]]
+#                     data_temp["revenue_Bkt"] = pd.qcut(
+#                         data_temp.revenue, 10, duplicates="drop"
+#                     )
+
+#                     if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
+#                         ind_grp = ind[:-4] + ind[-2:]
+#                         data_temp = data_new[data_new.TRBC_industry_group_all_codes == ind_grp][
+#                             [column, "revenue"]
+#                         ]
+#                         data_temp["revenue_Bkt"] = pd.qcut(
+#                             data_temp.revenue, 10, duplicates="drop"
+#                         )
+
+#                         if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
+#                             bus_sect = ind_grp[:-4] + ind_grp[-2:]
+#                             data_temp = data_new[data_new.TRBC_business_sector_all_codes == bus_sect][
+#                                 [column, "revenue"]
+#                             ]
+#                             data_temp["revenue_Bkt"] = pd.qcut(
+#                                 data_temp.revenue, 10, duplicates="drop"
+#                             )
+                            
+#                             if data_temp.groupby("revenue_Bkt").count()[column].min() < 10:
+#                                 eco_sect = bus_sect[:-4] + bus_sect[-2:]
+#                                 data_temp = data_new[data_new.TRBC_economic_sector_all_codes == eco_sect][
+#                                     [column, "revenue"]
+#                                 ]
+#                                 data_temp["revenue_Bkt"] = pd.qcut(
+#                                     data_temp.revenue, 10, duplicates="drop"
+#                                 )
+                                                 
+#                                 filled_sub_ind_values = data_new.loc[
+#                                     index_to_fill, column
+#                                 ].fillna(
+#                                     data_temp.groupby("revenue_Bkt")[column].transform(
+#                                         "mean"
+#                                     )
+#                                 )
+#                                 data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+#                                 temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+#                                 temp_means.index = temp_means.index.astype(str)
+#                                 dict_mean_to_impute_col[act] = temp_means.to_dict()
+                                
+#                             else:
+#                                 filled_sub_ind_values = data_new.loc[
+#                                     index_to_fill, column
+#                                 ].fillna(
+#                                     data_temp.groupby("revenue_Bkt")[column].transform(
+#                                         "mean"
+#                                     )
+#                                 )
+#                                 data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+#                                 temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+#                                 temp_means.index = temp_means.index.astype(str)
+#                                 dict_mean_to_impute_col[act] = temp_means.to_dict()
+
+#                         else:
+#                             filled_sub_ind_values = data_new.loc[
+#                                 index_to_fill, column
+#                             ].fillna(
+#                                 data_temp.groupby("revenue_Bkt")[column].transform(
+#                                     "mean"
+#                                 )
+#                             )
+#                             data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+#                             temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+#                             temp_means.index = temp_means.index.astype(str)
+#                             dict_mean_to_impute_col[act] = temp_means.to_dict()
+
+#                     else:
+#                         filled_sub_ind_values = data_new.loc[
+#                             index_to_fill, column
+#                         ].fillna(
+#                             data_temp.groupby("revenue_Bkt")[column].transform("mean")
+#                         )
+#                         data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+#                         temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+#                         temp_means.index = temp_means.index.astype(str)
+#                         dict_mean_to_impute_col[act] = temp_means.to_dict()
+
+#                 else:
+#                     filled_sub_ind_values = data_new.loc[index_to_fill, column].fillna(
+#                         data_temp.groupby("revenue_Bkt")[column].transform("mean")
+#                     )
+#                     data_new.loc[index_to_fill, column] = filled_sub_ind_values
+
+#                     temp_means = data_temp.groupby("revenue_Bkt")[column].mean()
+#                     temp_means.index = temp_means.index.astype(str)
+#                     dict_mean_to_impute_col[act] = temp_means.to_dict()
+
+#             dict_mean_to_impute[column] = dict_mean_to_impute_col
+
+#         with open(f"{path_intermediary}dict_means.json", "w") as fp:
+#             json.dump(dict_mean_to_impute, fp)
+
+#     else:
+#         with open(f"{path_intermediary}dict_means.json", "r") as fp:
+#             df_means = json.load(fp)
+#         for column in columnlist:
+#             data_temp = data_new[data_new[column].isna()][
+#                 [column, "TRBC_activity_all_codes", "revenue"]
+#             ]
+
+#             for act in data_temp.TRBC_activity_all_codes.unique():
+#                 for i in data_temp[data_temp.TRBC_activity_all_codes == act].index:
+#                     count = 0
+#                     temp_revenue = data_new.loc[i, "revenue"]
+
+#                     for interval in df_means[column][act].keys():
+#                         borne_inf, borne_sup = float(interval.split(",")[0][1:]), float(
+#                             interval.split(",")[1][:-1]
+#                         )
+#                         if count == 0:
+#                             borne_inf = -np.inf
+#                         if count == 9:
+#                             borne_sup = np.inf
+#                         if borne_inf <= temp_revenue and temp_revenue <= borne_sup:
+#                             data_new.loc[i, column] = df_means[column][act][
+#                                 interval
+#                             ]
+#                         count += 1
+
+#     return data_new
 
 
 def encoding(df, path_intermediary, train, restricted_features):
@@ -709,9 +857,11 @@ def custom_train_split(
     
     df_train.to_parquet(path_intermediary + f"df_train_{target}.parquet")
     df_test.to_parquet(path_intermediary + f"df_test_{target}.parquet")
+
     
-    print("train apres target_preprocessing : ", str(df_train.shape))
-    print("test apres target_preprocessing : ", str(df_test.shape))
+    
+    # print("train apres target_preprocessing : ", str(df_train.shape))
+    # print("test apres target_preprocessing : ", str(df_test.shape))
     if target in ["cf1", "cf3", "cf2", "cf123"]:
         # df_train = outliers_preprocess(df_train, target, threshold_under=threshold_under, threshold_over=threshold_over)
         X_train, y_train = df_train[features], df_train[target+"_log"]

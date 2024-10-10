@@ -1,7 +1,7 @@
 import pandas as pd
 
 from functions.merged_dataset_creation import create_preprocessed_dataset
-# from functions.preprocessing import outliers_preprocess
+from functions.preprocessing import outliers_preprocess
 
 import configparser
 
@@ -48,7 +48,7 @@ def assert_input_format(df):
 
 
 def load_data(
-    filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False
+     filter_outliers=True, threshold_under=1.5, threshold_over=2.5, save=False, predict = False,
 ):
     """
     Load pre-downloaded datasets from the specified path or construct them if missing.
@@ -68,46 +68,6 @@ def load_data(
     path_config = config["paths_restricted"]
     path=  path_config.get('path_rawdata')
 
-    # try:
-    #     preprocessed_dataset = pd.read_parquet(
-    #         path + "cgee_preprocessed_dataset_2023.parquet"
-    #     )
-    #     print("File found")
-        
-
-    # except FileNotFoundError:
-    #     print("File not found")
-        
-    #     print("File not found, constructing it")
-
-    #     input_dataset = pd.read_parquet(path + "input_dataset_full_extract.parquet")
-    #     assert_input_format(input_dataset)
-    #     region_mapping = pd.read_excel(path + "country_region_mapping.xlsx")
-    #     carbon_pricing = pd.read_excel(
-    #         path + "carbon_pricing_preprocessed_2023.xlsx",
-    #     )
-    #     income_group = pd.read_csv(
-    #         path + "income_group_preprocessed_2023.csv",
-    #     )
-    #     fuel_intensity = pd.read_csv(path + "fuel_mix_2023.csv")
-
-    #     preprocessed_dataset = create_preprocessed_dataset(
-    #         input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
-    #     )
-    #     if save:
-    #         preprocessed_dataset.to_parquet(
-    #             path + "cgee_preprocessed_dataset_2023.parquet"
-    #         )
-
-    # if filter_outliers:
-    #     for target in ["cf1", "cf2", "cf3", "cf123"]:
-    #         preprocessed_dataset = outliers_preprocess(
-    #             preprocessed_dataset,
-    #             target,
-    #             threshold_under=threshold_under,
-    #             threshold_over=threshold_over,
-    #         )
-    
     try:
         preprocessed_dataset = pd.read_parquet(
             path + "cogem_preprocessed_dataset.parquet"
@@ -128,17 +88,29 @@ def load_data(
         )
         fuel_intensity = pd.read_csv(path + "fuel_mix.csv")
 
+        trbc_dataset = pd.read_csv(path+ 'trbc_dataset.csv')
+
         preprocessed_dataset = create_preprocessed_dataset(
-            input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping
+            input_dataset, carbon_pricing, income_group, fuel_intensity, region_mapping, trbc_dataset
         )
         if save:
-            # if predict :
-            #     preprocessed_dataset.to_parquet(
-            #     path + "predict_dataset.parquet"
-            # )
-            # else :
-            preprocessed_dataset.to_parquet(
-                path + "cogem_preprocessed_dataset.parquet"
+            if predict :
+                preprocessed_dataset.to_parquet(
+                path + "predict_dataset.parquet"
+            )
+            else :
+                preprocessed_dataset.to_parquet(
+                    path + "cogem_preprocessed_dataset.parquet"
+                )
+                
+
+    if filter_outliers:
+        for target in ["cf1", "cf2", "cf3", "cf123"]:
+            preprocessed_dataset = outliers_preprocess(
+                preprocessed_dataset,
+                target,
+                threshold_under=threshold_under,
+                threshold_over=threshold_over,
             )
 
-    return preprocessed_dataset   
+    return preprocessed_dataset

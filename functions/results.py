@@ -85,7 +85,7 @@ def summary_detailed(
         
     ######### A supprimer
     
-    X_test_copy.to_parquet("data/Refinitiv_extraction/X_test_copy.parquet")
+    # X_test_copy.to_parquet("data/Refinitiv_extraction/X_test_copy.parquet")
     
     
     ########### 
@@ -174,7 +174,8 @@ def summary_detailed(
         categ_type = pd.CategoricalDtype(categories=sorted_categs, ordered=True)
         rmses_df[category] = pd.Series(rmses_df[category], dtype=categ_type)
         rmses_df = rmses_df.sort_values(by=[category])
-        plot_detailed(rmses_df, target, path_plot, category)
+        # plot_detailed(rmses_df, target, path_plot, category)
+        
 
     return summary_region_sector
 
@@ -228,6 +229,9 @@ def scopes_report(
     final_dataset = set_columns(final_dataset, features)
 
     final_dataset_train = target_preprocessing(final_dataset, target)
+    with open(path_models + f"{target}_model_before_final_fit.pkl", "wb") as f:
+        pickle.dump(best_model, f)
+
     final_model = best_model.fit(
         final_dataset_train[features], final_dataset_train[f"{target}_log"]
     )
@@ -300,6 +304,9 @@ def metrics(y_test, y_pred, summary_final, target, model_name, n_split=10):
         }
     )
     summary_global = pd.DataFrame(summary_final)
+    print(target)
+    print(summary_global)
+    print("-------------------------")
     return summary_global, rmse, std
 
 
@@ -348,7 +355,7 @@ def best_model_analysis(
     y_pred_best = best_model.predict(X_test)
 
 
-    plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
+    # plot(best_model, X_train, y_test, y_pred_best, path_plot, target)
 
     metrics_scope = summary_detailed(
         X_test, y_test, y_pred_best, df_test, target, restricted_features, path_plot
